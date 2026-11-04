@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "Common/BitUtils.h"
 #include "Common/BitField.h"
+#include "Common/BitUtils.h"
 #include "Common/CommonTypes.h"
 
 class PointerWrap;

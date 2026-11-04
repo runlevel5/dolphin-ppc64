@@ -240,8 +240,7 @@ TEST(TextureDecoderBytes, RGB565)
     src[i + 1] = 0x10;
   }
   std::array<u8, 64> dst;
-  TexDecoder_Decode(dst.data(), src.data(), 4, 4, TextureFormat::RGB565, nullptr,
-                    TLUTFormat::IA8);
+  TexDecoder_Decode(dst.data(), src.data(), 4, 4, TextureFormat::RGB565, nullptr, TLUTFormat::IA8);
   for (size_t i = 0; i < dst.size(); i += 4)
   {
     const std::array<u8, 4> pixel{dst[i], dst[i + 1], dst[i + 2], dst[i + 3]};
@@ -261,8 +260,7 @@ TEST(TextureDecoderBytes, RGBA8)
     src[32 + 2 * i + 1] = 0x44;
   }
   std::array<u8, 64> dst;
-  TexDecoder_Decode(dst.data(), src.data(), 4, 4, TextureFormat::RGBA8, nullptr,
-                    TLUTFormat::IA8);
+  TexDecoder_Decode(dst.data(), src.data(), 4, 4, TextureFormat::RGBA8, nullptr, TLUTFormat::IA8);
   for (size_t i = 0; i < dst.size(); i += 4)
   {
     const std::array<u8, 4> pixel{dst[i], dst[i + 1], dst[i + 2], dst[i + 3]};

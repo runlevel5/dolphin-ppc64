@@ -103,10 +103,11 @@ union UVIDisplayControlRegister
   u16 Hex = 0;
   BitField<0, 1, u16> ENB;  // Enables video timing generation and data request
   BitField<1, 1, u16> RST;  // Clears all data requests and puts VI into its idle state
-  BitField<2, 1, u16> NIN;  // 0: Interlaced, 1: Non-Interlaced: top field drawn at field rate and bottom
-                // field is not displayed
+  BitField<2, 1, u16> NIN;  // 0: Interlaced, 1: Non-Interlaced: top field drawn at field rate and
+                            // bottom field is not displayed
   BitField<3, 1, u16> DLR;  // Selects 3D Display Mode
-  BitField<4, 2, u16> LE0;  // Display Latch; 0: Off, 1: On for 1 field, 2: On for 2 fields, 3: Always on
+  BitField<4, 2, u16>
+      LE0;  // Display Latch; 0: Off, 1: On for 1 field, 2: On for 2 fields, 3: Always on
   BitField<6, 2, u16> LE1;
   BitField<8, 2, u16> FMT;  // 0: NTSC, 1: PAL, 2: MPAL, 3: Debug
 
@@ -127,8 +128,8 @@ union UVIHorizontalTiming1
 {
   u32 Hex = 0;
   DOLPHIN_U32_HALVES(Lo, Hi);
-  BitField<0, 7, u32> HSY;      // Horizontal Sync Width
-  BitField<7, 10, u32> HBE640;  // Horizontal Sync Start to horizontal blank end
+  BitField<0, 7, u32> HSY;       // Horizontal Sync Width
+  BitField<7, 10, u32> HBE640;   // Horizontal Sync Start to horizontal blank end
   BitField<17, 10, u32> HBS640;  // Half line to horizontal blanking start
 };
 
@@ -137,7 +138,7 @@ union UVIVBlankTimingRegister
 {
   u32 Hex = 0;
   DOLPHIN_U32_HALVES(Lo, Hi);
-  BitField<0, 10, u32> PRB;  // Pre-blanking in half lines
+  BitField<0, 10, u32> PRB;   // Pre-blanking in half lines
   BitField<16, 10, u32> PSB;  // Post blanking in half lines
 };
 
@@ -146,8 +147,8 @@ union UVIBurstBlankingRegister
 {
   u32 Hex = 0;
   DOLPHIN_U32_HALVES(Lo, Hi);
-  BitField<0, 5, u32> BS0;   // Field x start to burst blanking start in halflines
-  BitField<5, 11, u32> BE0;  // Field x start to burst blanking end in halflines
+  BitField<0, 5, u32> BS0;    // Field x start to burst blanking start in halflines
+  BitField<5, 11, u32> BE0;   // Field x start to burst blanking end in halflines
   BitField<16, 5, u32> BS2;   // Field x+2 start to burst blanking start in halflines
   BitField<21, 11, u32> BE2;  // Field x+2 start to burst blanking end in halflines
 };
@@ -159,9 +160,9 @@ union UVIFBInfoRegister
   // TODO: mask out lower 9bits/align to 9bits???
   BitField<0, 24, u32> FBB;  // Base address of the framebuffer in external mem
   // POFF only seems to exist in the top reg. XOFF, unknown.
-  BitField<24, 4, u32> XOFF;  // Horizontal Offset of the left-most pixel within the first word of the fetched
-                 // picture
-  BitField<28, 1, u32> POFF;  // Page offset: 1: fb address is (address>>5)
+  BitField<24, 4, u32> XOFF;  // Horizontal Offset of the left-most pixel within the first word of
+                              // the fetched picture
+  BitField<28, 1, u32> POFF;     // Page offset: 1: fb address is (address>>5)
   BitField<29, 3, u32> CLRPOFF;  // ? setting bit 31 clears POFF
 };
 
@@ -170,19 +171,19 @@ union UVIInterruptRegister
 {
   u32 Hex = 0;
   DOLPHIN_U32_HALVES(Lo, Hi);
-  BitField<0, 11, u32> HCT;  // Horizontal Position
-  BitField<16, 11, u32> VCT;  // Vertical Position
+  BitField<0, 11, u32> HCT;      // Horizontal Position
+  BitField<16, 11, u32> VCT;     // Vertical Position
   BitField<28, 1, u32> IR_MASK;  // Interrupt Mask Bit
-  BitField<31, 1, u32> IR_INT;  // Interrupt Status (1=Active, 0=Clear)
+  BitField<31, 1, u32> IR_INT;   // Interrupt Status (1=Active, 0=Clear)
 };
 
 union UVILatchRegister
 {
   u32 Hex = 0;
   DOLPHIN_U32_HALVES(Lo, Hi);
-  BitField<0, 11, u32> HCT;  // Horizontal Count
+  BitField<0, 11, u32> HCT;   // Horizontal Count
   BitField<16, 11, u32> VCT;  // Vertical Count
-  BitField<31, 1, u32> TRG;  // Trigger Flag
+  BitField<31, 1, u32> TRG;   // Trigger Flag
 };
 
 union PictureConfigurationRegister
@@ -195,7 +196,7 @@ union PictureConfigurationRegister
 union UVIHorizontalScaling
 {
   u16 Hex = 0;
-  BitField<0, 9, u16> STP;  // Horizontal stepping size (U1.8 Scaler Value) (0x160 Works for 320)
+  BitField<0, 9, u16> STP;     // Horizontal stepping size (U1.8 Scaler Value) (0x160 Works for 320)
   BitField<12, 1, u16> HS_EN;  // Enable Horizontal Scaling
 
   UVIHorizontalScaling() = default;
@@ -234,7 +235,7 @@ union UVIBorderBlankRegister
 {
   u32 Hex = 0;
   DOLPHIN_U32_HALVES(Lo, Hi);
-  BitField<0, 10, u32> HBE656;  // Border Horizontal Blank End
+  BitField<0, 10, u32> HBE656;   // Border Horizontal Blank End
   BitField<21, 10, u32> HBS656;  // Border Horizontal Blank start
   BitField<31, 1, u32> BRDR_EN;  // Border Enable
 };

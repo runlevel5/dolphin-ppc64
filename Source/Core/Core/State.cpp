@@ -20,7 +20,6 @@
 #include <lzo/lzo1x.h>
 
 #include "Common/Buffer.h"
-#include "Common/Swap.h"
 #include "Common/ChunkFile.h"
 #include "Common/CommonTypes.h"
 #include "Common/Contains.h"
@@ -30,6 +29,7 @@
 #include "Common/Logging/Log.h"
 #include "Common/MsgHandler.h"
 #include "Common/StringUtil.h"
+#include "Common/Swap.h"
 #include "Common/Thread.h"
 #include "Common/TimeUtil.h"
 #include "Common/TransferableSharedMutex.h"

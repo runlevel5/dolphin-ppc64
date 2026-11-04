@@ -6,9 +6,9 @@
 #include <hidapi.h>
 
 #include "Common/CommonTypes.h"
-#include "Common/Swap.h"
 #include "Common/Logging/Log.h"
 #include "Common/MathUtil.h"
+#include "Common/Swap.h"
 #include "InputCommon/ControllerInterface/ControllerInterface.h"
 
 namespace ciface::SteamDeck

@@ -11,9 +11,9 @@
 
 #include "AudioCommon/CubebUtils.h"
 #include "Common/BitUtils.h"
-#include "Common/Swap.h"
 #include "Common/CommonTypes.h"
 #include "Common/Logging/Log.h"
+#include "Common/Swap.h"
 
 #include "Core/CoreTiming.h"
 #include "Core/HW/EXI/EXI.h"

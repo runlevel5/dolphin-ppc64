@@ -383,7 +383,7 @@ union DualTexInfo
 struct Light
 {
   u32 useless[3];
-  u32 color;  // R, G, B, A from the most significant byte
+  u32 color;         // R, G, B, A from the most significant byte
   float cosatt[3];   // cos attenuation
   float distatt[3];  // dist attenuation
 

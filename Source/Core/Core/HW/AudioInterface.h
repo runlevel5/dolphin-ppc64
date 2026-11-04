@@ -72,11 +72,12 @@ private:
     BitField<1, 1, u32> AISFR;     // AIS Frequency (0=32khz 1=48khz)
     BitField<2, 1, u32> AIINTMSK;  // 0=interrupt masked 1=interrupt enabled
     BitField<3, 1, u32> AIINT;     // audio interrupt status
-    BitField<4, 1, u32> AIINTVLD;  // This bit controls whether AIINT is affected by the Interrupt Timing
-                       // register
-                       // matching the sample counter. Once set, AIINT will hold its last value
-    BitField<5, 1, u32> SCRESET;   // write to reset counter
-    BitField<6, 1, u32> AIDFR;     // AID Frequency (0=48khz 1=32khz)
+    BitField<4, 1, u32>
+        AIINTVLD;  // This bit controls whether AIINT is affected by the Interrupt Timing
+                   // register
+                   // matching the sample counter. Once set, AIINT will hold its last value
+    BitField<5, 1, u32> SCRESET;  // write to reset counter
+    BitField<6, 1, u32> AIDFR;    // AID Frequency (0=48khz 1=32khz)
     u32 hex = 0;
   };
 

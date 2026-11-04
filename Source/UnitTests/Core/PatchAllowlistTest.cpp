@@ -13,12 +13,12 @@
 #include <picojson.h>
 
 #include "Common/BitUtils.h"
-#include "Common/Swap.h"
 #include "Common/CommonPaths.h"
 #include "Common/Crypto/SHA1.h"
 #include "Common/FileUtil.h"
 #include "Common/IniFile.h"
 #include "Common/JsonUtil.h"
+#include "Common/Swap.h"
 #include "Core/AchievementApprovedHash.h"
 #include "Core/ActionReplay.h"
 #include "Core/GeckoCode.h"

@@ -91,8 +91,8 @@ constexpr Permute MakePermute(int elem_size, int count, int stored_words, bool l
     {
       const int mem = j * elem_size + e;
       const int control = word * 4 + 4 - elem_size + e;
-      const int source = Common::kHostBigEndian ? (load4 ? 4 + mem : mem) :
-                                                  (load16 ? 15 - mem : 7 - mem);
+      const int source =
+          Common::kHostBigEndian ? (load4 ? 4 + mem : mem) : (load16 ? 15 - mem : 7 - mem);
       p.bytes[Common::kHostBigEndian ? control : 15 - control] = static_cast<u8>(source);
     }
   }

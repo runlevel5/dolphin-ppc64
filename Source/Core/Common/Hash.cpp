@@ -440,7 +440,9 @@ static u64 GetHash64_PPC64_VPMSUM(const u8* src, u32 len, u32 samples)
   // contents as a little-endian one, whose element 0 is the low doubleword: it reverses the bytes
   // of a loaded block, and swaps the elements of the other vectors.
   constexpr bool swapped = Common::kHostBigEndian;
-  const auto make = [](u64 low, u64 high) -> Vec { return swapped ? Vec{high, low} : Vec{low, high}; };
+  const auto make = [](u64 low, u64 high) -> Vec {
+    return swapped ? Vec{high, low} : Vec{low, high};
+  };
   // x^128 and x^192 modulo the polynomial, for the low and high halves of an accumulator.
   const Vec k = make(0x05f5c3c7eb52fab6, 0x4eb938a7d257740e);
   const auto fold = [&k](Vec a, Vec b) -> Vec { return __builtin_crypto_vpmsumd(a, k) ^ b; };

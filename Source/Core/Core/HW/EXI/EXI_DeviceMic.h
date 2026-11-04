@@ -6,8 +6,8 @@
 #include <array>
 #include <mutex>
 
-#include "Common/Buffer.h"
 #include "Common/BitField.h"
+#include "Common/Buffer.h"
 #include "Common/CommonTypes.h"
 #include "Common/WorkQueueThread.h"
 #include "Core/HW/EXI/EXI_Device.h"

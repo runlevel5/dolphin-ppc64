@@ -58,8 +58,8 @@ union UDSPControl
   BitField<7, 1, u16> DSP;
   BitField<8, 1, u16> DSP_mask;
   // Other ???
-  BitField<9, 1, u16> DMAState;     // DSPGetDMAStatus() uses this flag. __ARWaitForDMA() uses it too...maybe
-                        // it's just general DMA flag
+  BitField<9, 1, u16> DMAState;  // DSPGetDMAStatus() uses this flag. __ARWaitForDMA() uses it
+                                 // too...maybe it's just general DMA flag
   BitField<10, 1, u16> DSPInitCode;  // Indicator that the DSP was initialized?
   BitField<11, 1, u16> DSPInit;      // DSPInit() writes to this flag
   BitField<12, 4, u16> pad;

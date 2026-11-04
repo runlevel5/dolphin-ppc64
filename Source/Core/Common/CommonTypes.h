@@ -20,7 +20,8 @@
 
 // Host byte order, for the few places that need it in the preprocessor (struct layout, source
 // selection). Everywhere else, use Common::kHostBigEndian from Common/Swap.h.
-#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) &&                                    \
+    __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define DOLPHIN_HOST_BIG_ENDIAN 1
 #else
 #define DOLPHIN_HOST_BIG_ENDIAN 0
@@ -29,16 +30,16 @@
 // Declares, in a union with a 32-bit member, an anonymous struct of its two 16-bit halves, in
 // the order that overlays them on the member on this host.
 #if DOLPHIN_HOST_BIG_ENDIAN
-#define DOLPHIN_U32_HALVES(low, high)                                                           \
-  struct                                                                                         \
-  {                                                                                              \
-    u16 high, low;                                                                               \
+#define DOLPHIN_U32_HALVES(low, high)                                                              \
+  struct                                                                                           \
+  {                                                                                                \
+    u16 high, low;                                                                                 \
   }
 #else
-#define DOLPHIN_U32_HALVES(low, high)                                                           \
-  struct                                                                                         \
-  {                                                                                              \
-    u16 low, high;                                                                               \
+#define DOLPHIN_U32_HALVES(low, high)                                                              \
+  struct                                                                                           \
+  {                                                                                                \
+    u16 low, high;                                                                                 \
   }
 #endif
 

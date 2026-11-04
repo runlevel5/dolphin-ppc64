@@ -373,7 +373,7 @@ TEST_F(VertexLoaderTest, LargeFloatVertexSpeed)
 
 // Each color format comes out as R, G, B, A bytes, whatever the host's byte order.
 class VertexLoaderColorBytesTest : public VertexLoaderTest,
-                                    public ::testing::WithParamInterface<ColorFormat>
+                                   public ::testing::WithParamInterface<ColorFormat>
 {
 };
 INSTANTIATE_TEST_SUITE_P(AllFormats, VertexLoaderColorBytesTest,

@@ -8,9 +8,9 @@
 #include <string>
 
 #include "Common/CommonTypes.h"
-#include "Common/Swap.h"
 #include "Common/IOFile.h"
 #include "Common/Logging/Log.h"
+#include "Common/Swap.h"
 
 namespace
 {

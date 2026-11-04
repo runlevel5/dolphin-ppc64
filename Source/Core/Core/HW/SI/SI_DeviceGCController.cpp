@@ -294,7 +294,8 @@ void CSIDevice_GCController::SendCommand(u32 command, u8 poll)
 {
   UCommand controller_command(command);
 
-  if (static_cast<EDirectCommands>(controller_command.command.Value()) == EDirectCommands::CMD_WRITE)
+  if (static_cast<EDirectCommands>(controller_command.command.Value()) ==
+      EDirectCommands::CMD_WRITE)
   {
     const u32 type = controller_command.parameter1;  // 0 = stop, 1 = rumble, 2 = stop hard
 

@@ -8,8 +8,8 @@
 #include <utility>
 
 #include "Common/BitUtils.h"
-#include "Common/Swap.h"
 #include "Common/CommonTypes.h"
+#include "Common/Swap.h"
 
 namespace DiscIO
 {
@@ -30,7 +30,8 @@ CISOFileReader::CISOFileReader(File::DirectIOFile file) : m_file(std::move(file)
 std::unique_ptr<CISOFileReader> CISOFileReader::Create(File::DirectIOFile file)
 {
   CISOHeader header;
-  if (file.OffsetRead(0, Common::AsWritableU8Span(header)) && Common::FromLittleEndian(header.magic) == CISO_MAGIC)
+  if (file.OffsetRead(0, Common::AsWritableU8Span(header)) &&
+      Common::FromLittleEndian(header.magic) == CISO_MAGIC)
   {
     return std::unique_ptr<CISOFileReader>(new CISOFileReader(std::move(file)));
   }

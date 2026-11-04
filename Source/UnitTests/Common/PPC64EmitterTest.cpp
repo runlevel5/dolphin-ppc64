@@ -1211,9 +1211,9 @@ TEST(PPC64Emitter, ByteReversedLoadsAndStores)
   });
   code.Call<void>(stored.data(), u64(0x01234567));
   const auto word_bytes = std::bit_cast<std::array<u8, 4>>(Common::bswap32(0x01234567));
-  EXPECT_EQ((std::array<u8, 8>{word_bytes[0], word_bytes[1], word_bytes[2], word_bytes[3], 0, 0,
-                               0, 0}),
-            stored);
+  EXPECT_EQ(
+      (std::array<u8, 8>{word_bytes[0], word_bytes[1], word_bytes[2], word_bytes[3], 0, 0, 0, 0}),
+      stored);
 
   code.Emit([&] {
     code.STDBRX(R4, R0, R3);
