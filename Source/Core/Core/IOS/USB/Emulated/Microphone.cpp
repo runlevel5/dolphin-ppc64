@@ -193,11 +193,11 @@ long Microphone::DataCallback(const SampleType* input_buffer, long nframes)
 
   const u32 stream_size = GetStreamSize();
   const bool are_samples_byte_swapped = AreSamplesByteSwapped();
-  for (const SampleType le_sample : std::ranges::transform_view(buffer, apply_gain))
+  for (const SampleType sample : std::ranges::transform_view(buffer, apply_gain))
   {
-    UpdateLoudness(le_sample);
+    UpdateLoudness(sample);
     m_stream_buffer[m_stream_wpos] =
-        are_samples_byte_swapped ? Common::swap16(le_sample) : le_sample;
+        are_samples_byte_swapped ? Common::ToBigEndian(sample) : Common::ToLittleEndian(sample);
     m_stream_wpos = (m_stream_wpos + 1) % stream_size;
   }
 

@@ -804,7 +804,7 @@ u32 MemoryManager::Read_U32_Swap(u32 address) const
 {
   u32 value = 0;
   CopyFromEmu(&value, address, sizeof(value));
-  return value;
+  return Common::FromLittleEndian(value);
 }
 
 void MemoryManager::Write_U8(u8 value, u32 address)
@@ -832,11 +832,13 @@ void MemoryManager::Write_U64(u64 value, u32 address)
 
 void MemoryManager::Write_U32_Swap(u32 value, u32 address)
 {
+  value = Common::ToLittleEndian(value);
   CopyToEmu(address, &value, sizeof(value));
 }
 
 void MemoryManager::Write_U64_Swap(u64 value, u32 address)
 {
+  value = Common::ToLittleEndian(value);
   CopyToEmu(address, &value, sizeof(value));
 }
 

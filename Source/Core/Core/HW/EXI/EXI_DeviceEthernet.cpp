@@ -13,6 +13,7 @@
 #include "Common/Logging/Log.h"
 #include "Common/Network.h"
 #include "Common/StringUtil.h"
+#include "Common/Swap.h"
 #include "Core/Config/MainSettings.h"
 #include "Core/CoreTiming.h"
 #include "Core/HW/EXI/EXI.h"
@@ -399,15 +400,14 @@ void CEXIETHERNET::MXCommandHandler(u32 data, u32 size)
     goto write_to_register;
 
   case BBA_WRTXFIFOD:
-    if (size == 2)
-      data = Common::swap16(data & 0xffff);
-    else if (size == 3)
-      data = Common::swap32(data & 0xffffff) >> 8;
-    else if (size == 4)
-      data = Common::swap32(data);
-    DirectFIFOWrite((u8*)&data, size);
+  {
+    // The low `size` bytes of the value, most significant first.
+    u8 bytes[4];
+    Common::WriteBigEndian(bytes, data << (8 * (4 - size)));
+    DirectFIFOWrite(bytes, size);
     // Do not increment address
     return;
+  }
 
   case BBA_IR:
     data &= (data & 0xff) ^ 0xff;

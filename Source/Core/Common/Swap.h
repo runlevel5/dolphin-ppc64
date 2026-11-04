@@ -3,33 +3,14 @@
 
 #pragma once
 
+#include <array>
+#include <bit>
 #include <cstring>
 #include <type_traits>
-
-#ifdef __APPLE__
-#include <libkern/OSByteOrder.h>
-#elif defined(__linux__)
-#include <byteswap.h>
-#elif defined(__FreeBSD__)
-#include <sys/endian.h>
-#elif defined(__OpenBSD__)
-#include <endian.h>
-#endif
 
 #include <fmt/format.h>
 
 #include "Common/CommonTypes.h"
-
-namespace Common
-{
-inline u8 swap8(u8 data)
-{
-  return data;
-}
-inline u32 swap24(const u8* data)
-{
-  return (data[0] << 16) | (data[1] << 8) | data[2];
-}
 
 #if defined(ANDROID) || defined(__OpenBSD__)
 #undef swap16
@@ -37,46 +18,135 @@ inline u32 swap24(const u8* data)
 #undef swap64
 #endif
 
-#ifdef _WIN32
-inline u16 swap16(u16 data)
+namespace Common
 {
-  return _byteswap_ushort(data);
-}
-inline u32 swap32(u32 data)
+// The emulated consoles are big-endian. On a big-endian host, the conversions between console and
+// host byte order below are identities; the bswap* functions always reverse bytes.
+constexpr bool kHostBigEndian = std::endian::native == std::endian::big;
+static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little,
+              "Mixed-endian hosts are not supported");
+static_assert(kHostBigEndian == (DOLPHIN_HOST_BIG_ENDIAN != 0),
+              "DOLPHIN_HOST_BIG_ENDIAN disagrees with std::endian::native");
+
+// Byte reversal, whatever the host's byte order.
+constexpr u8 bswap8(u8 data)
 {
-  return _byteswap_ulong(data);
+  return data;
 }
-inline u64 swap64(u64 data)
+constexpr u16 bswap16(u16 data)
 {
-  return _byteswap_uint64(data);
+#ifdef __cpp_lib_byteswap
+  return std::byteswap(data);
+#else
+  return static_cast<u16>((data >> 8) | (data << 8));
+#endif
 }
-#elif __linux__
-inline u16 swap16(u16 data)
+constexpr u32 bswap32(u32 data)
 {
-  return bswap_16(data);
+#ifdef __cpp_lib_byteswap
+  return std::byteswap(data);
+#else
+  return (static_cast<u32>(bswap16(static_cast<u16>(data))) << 16) |
+         bswap16(static_cast<u16>(data >> 16));
+#endif
 }
-inline u32 swap32(u32 data)
+constexpr u64 bswap64(u64 data)
 {
-  return bswap_32(data);
+#ifdef __cpp_lib_byteswap
+  return std::byteswap(data);
+#else
+  return (static_cast<u64>(bswap32(static_cast<u32>(data))) << 32) |
+         bswap32(static_cast<u32>(data >> 32));
+#endif
 }
-inline u64 swap64(u64 data)
+
+static_assert(bswap16(0x0102) == 0x0201);
+static_assert(bswap32(0x01020304) == 0x04030201);
+static_assert(bswap64(0x0102030405060708) == 0x0807060504030201);
+
+// Byte reversal of any arithmetic type, including floating-point types.
+template <typename T>
+constexpr T ByteSwap(T data)
 {
-  return bswap_64(data);
+  static_assert(std::is_arithmetic_v<T>, "function only makes sense with arithmetic types");
+  if constexpr (sizeof(T) == 1)
+    return data;
+  else if constexpr (sizeof(T) == 2)
+    return std::bit_cast<T>(bswap16(std::bit_cast<u16>(data)));
+  else if constexpr (sizeof(T) == 4)
+    return std::bit_cast<T>(bswap32(std::bit_cast<u32>(data)));
+  else
+  {
+    static_assert(sizeof(T) == 8, "unsupported size");
+    return std::bit_cast<T>(bswap64(std::bit_cast<u64>(data)));
+  }
 }
-#elif __APPLE__
-inline __attribute__((always_inline)) u16 swap16(u16 data)
+
+// Conversions between the host's byte order and a fixed byte order. Each is its own inverse.
+template <typename T>
+constexpr T FromBigEndian(T data)
 {
-  return OSSwapInt16(data);
+  if constexpr (kHostBigEndian)
+    return data;
+  else
+    return ByteSwap(data);
 }
-inline __attribute__((always_inline)) u32 swap32(u32 data)
+template <typename T>
+constexpr T ToBigEndian(T data)
 {
-  return OSSwapInt32(data);
+  return FromBigEndian(data);
 }
-inline __attribute__((always_inline)) u64 swap64(u64 data)
+template <typename T>
+constexpr T FromLittleEndian(T data)
 {
-  return OSSwapInt64(data);
+  if constexpr (kHostBigEndian)
+    return ByteSwap(data);
+  else
+    return data;
 }
-#elif __FreeBSD__
+template <typename T>
+constexpr T ToLittleEndian(T data)
+{
+  return FromLittleEndian(data);
+}
+
+static_assert(FromBigEndian(std::bit_cast<u32>(std::array<u8, 4>{1, 2, 3, 4})) == 0x01020304);
+static_assert(FromLittleEndian(std::bit_cast<u32>(std::array<u8, 4>{1, 2, 3, 4})) == 0x04030201);
+
+// Reads and writes of values stored in a fixed byte order, at any alignment.
+template <typename T>
+inline T ReadBigEndian(const u8* data)
+{
+  T value;
+  std::memcpy(&value, data, sizeof(T));
+  return FromBigEndian(value);
+}
+template <typename T>
+inline T ReadLittleEndian(const u8* data)
+{
+  T value;
+  std::memcpy(&value, data, sizeof(T));
+  return FromLittleEndian(value);
+}
+template <typename T>
+inline void WriteBigEndian(u8* data, T value)
+{
+  value = ToBigEndian(value);
+  std::memcpy(data, &value, sizeof(T));
+}
+template <typename T>
+inline void WriteLittleEndian(u8* data, T value)
+{
+  value = ToLittleEndian(value);
+  std::memcpy(data, &value, sizeof(T));
+}
+
+// Historic names. swap8/16/32/64 reverse bytes, which converts between the console's byte order
+// and a little-endian host's. The overloads on a pointer read a value in the console's byte order.
+inline u8 swap8(u8 data)
+{
+  return data;
+}
 inline u16 swap16(u16 data)
 {
   return bswap16(data);
@@ -89,101 +159,39 @@ inline u64 swap64(u64 data)
 {
   return bswap64(data);
 }
-#else
-// Slow generic implementation.
-inline u16 swap16(u16 data)
-{
-  return (data >> 8) | (data << 8);
-}
-inline u32 swap32(u32 data)
-{
-  return (swap16(data) << 16) | swap16(data >> 16);
-}
-inline u64 swap64(u64 data)
-{
-  return ((u64)swap32(data) << 32) | swap32(data >> 32);
-}
-#endif
 
+inline u32 swap24(const u8* data)
+{
+  return (data[0] << 16) | (data[1] << 8) | data[2];
+}
 inline u16 swap16(const u8* data)
 {
-  u16 value;
-  std::memcpy(&value, data, sizeof(u16));
-
-  return swap16(value);
+  return ReadBigEndian<u16>(data);
 }
 inline u32 swap32(const u8* data)
 {
-  u32 value;
-  std::memcpy(&value, data, sizeof(u32));
-
-  return swap32(value);
+  return ReadBigEndian<u32>(data);
 }
 inline u64 swap64(const u8* data)
 {
-  u64 value;
-  std::memcpy(&value, data, sizeof(u64));
-
-  return swap64(value);
+  return ReadBigEndian<u64>(data);
 }
 
 inline void WriteSwap16(u8* data, u16 value)
 {
-  value = swap16(value);
-  std::memcpy(data, &value, sizeof(u16));
+  WriteBigEndian(data, value);
 }
 inline void WriteSwap32(u8* data, u32 value)
 {
-  value = swap32(value);
-  std::memcpy(data, &value, sizeof(u32));
+  WriteBigEndian(data, value);
 }
 inline void WriteSwap64(u8* data, u64 value)
 {
-  value = swap64(value);
-  std::memcpy(data, &value, sizeof(u64));
+  WriteBigEndian(data, value);
 }
 
-template <int count>
-void swap(u8*);
-
-template <>
-inline void swap<1>(u8* data)
-{
-}
-
-template <>
-inline void swap<2>(u8* data)
-{
-  const u16 value = swap16(data);
-
-  std::memcpy(data, &value, sizeof(u16));
-}
-
-template <>
-inline void swap<4>(u8* data)
-{
-  const u32 value = swap32(data);
-
-  std::memcpy(data, &value, sizeof(u32));
-}
-
-template <>
-inline void swap<8>(u8* data)
-{
-  const u64 value = swap64(data);
-
-  std::memcpy(data, &value, sizeof(u64));
-}
-
-template <typename T>
-inline T FromBigEndian(T data)
-{
-  static_assert(std::is_arithmetic<T>::value, "function only makes sense with arithmetic types");
-
-  swap<sizeof(data)>(reinterpret_cast<u8*>(&data));
-  return data;
-}
-
+// A value stored in a fixed byte order, for structures that mirror files, packets or console
+// memory. Reading and assigning convert to and from the host's byte order.
 template <typename value_type>
 struct BigEndianValue
 {
@@ -193,7 +201,24 @@ struct BigEndianValue
   operator value_type() const { return FromBigEndian(raw); }
   BigEndianValue& operator=(value_type v)
   {
-    raw = FromBigEndian(v);
+    raw = ToBigEndian(v);
+    return *this;
+  }
+
+private:
+  value_type raw;
+};
+
+template <typename value_type>
+struct LittleEndianValue
+{
+  static_assert(std::is_arithmetic<value_type>(), "value_type must be an arithmetic type");
+  LittleEndianValue() = default;
+  explicit LittleEndianValue(value_type val) { *this = val; }
+  operator value_type() const { return FromLittleEndian(raw); }
+  LittleEndianValue& operator=(value_type v)
+  {
+    raw = ToLittleEndian(v);
     return *this;
   }
 
@@ -209,6 +234,18 @@ struct fmt::formatter<Common::BigEndianValue<value_type>>
   constexpr auto parse(format_parse_context& ctx) { return m_formatter.parse(ctx); }
   template <typename FormatContext>
   auto format(const Common::BigEndianValue<value_type>& value, FormatContext& ctx) const
+  {
+    return m_formatter.format(value.operator value_type(), ctx);
+  }
+};
+
+template <typename value_type>
+struct fmt::formatter<Common::LittleEndianValue<value_type>>
+{
+  fmt::formatter<value_type> m_formatter;
+  constexpr auto parse(format_parse_context& ctx) { return m_formatter.parse(ctx); }
+  template <typename FormatContext>
+  auto format(const Common::LittleEndianValue<value_type>& value, FormatContext& ctx) const
   {
     return m_formatter.format(value.operator value_type(), ctx);
   }

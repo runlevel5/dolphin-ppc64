@@ -3,7 +3,10 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
 #include <bit>
+#include <initializer_list>
 #include <vector>
 
 #include "Common/BitUtils.h"
@@ -94,20 +97,37 @@ TEST(BitUtils, IsValidLowMask)
 
 TEST(BitUtils, BitCastPtr)
 {
-  EXPECT_EQ(std::endian::native, std::endian::little);
+  // BitCastPtr reads and writes values in the host's representation, so the expected bytes are
+  // built from that representation, and the test holds on either byte order.
+  const auto bytes = [](auto value) {
+    const auto array = std::bit_cast<std::array<u8, sizeof(value)>>(value);
+    return std::vector<u8>(array.begin(), array.end());
+  };
+  const auto concat = [](std::initializer_list<std::vector<u8>> parts) {
+    std::vector<u8> result;
+    for (const auto& part : parts)
+      result.insert(result.end(), part.begin(), part.end());
+    return result;
+  };
+  const auto value_of = [](auto type, const std::vector<u8>& from) {
+    std::array<u8, sizeof(type)> array;
+    std::copy_n(from.begin(), array.size(), array.begin());
+    return std::bit_cast<decltype(type)>(array);
+  };
 
-  std::vector<u8> data{0, 1, 0, 2, 0, 3, 0, 0xFF, 0xFF};
+  std::vector<u8> data = concat({{0}, bytes(s16(1)), bytes(s16(2)), bytes(s16(3)), {0xFF, 0xFF}});
   u8* buffer = data.data();
 
   EXPECT_EQ(s16(1), Common::BitCastPtr<s16>(buffer + 1));
   Common::BitCastPtr<s16>(buffer + 1) = s16(-1);
   EXPECT_EQ(u16(0xFFFF), Common::BitCastPtr<u16>(buffer + 1));
-  EXPECT_EQ(data, std::vector<u8>({0, 0xFF, 0xFF, 2, 0, 3, 0, 0xFF, 0xFF}));
+  EXPECT_EQ(data, concat({{0, 0xFF, 0xFF}, bytes(s16(2)), bytes(s16(3)), {0xFF, 0xFF}}));
 
-  EXPECT_EQ(s32(0xFFFF0003), Common::BitCastPtr<s32>(buffer + 1)[1]);
+  EXPECT_EQ(value_of(s32(), concat({bytes(s16(3)), {0xFF, 0xFF}})),
+            Common::BitCastPtr<s32>(buffer + 1)[1]);
   Common::BitCastPtr<u32>(buffer + 1)[1] = u32(0xFFFFFFFF);
   EXPECT_EQ(s32(-1), Common::BitCastPtr<s32>(buffer + 1)[1]);
-  EXPECT_EQ(data, std::vector<u8>({0, 0xFF, 0xFF, 2, 0, 0xFF, 0xFF, 0xFF, 0xFF}));
+  EXPECT_EQ(data, concat({{0, 0xFF, 0xFF}, bytes(s16(2)), {0xFF, 0xFF, 0xFF, 0xFF}}));
 
 #pragma pack(push, 1)
   struct MyStruct
@@ -119,24 +139,24 @@ TEST(BitUtils, BitCastPtr)
 
   MyStruct s1 = Common::BitCastPtr<MyStruct>(buffer + 1);
   EXPECT_EQ(u16(0xFFFF), s1.v16);
-  EXPECT_EQ(u8(2), s1.v8);
+  EXPECT_EQ(bytes(s16(2))[0], s1.v8);
   s1.v16 = 4;
   s1.v8 = 5;
   Common::BitCastPtr<MyStruct>(buffer + 1) = s1;
   EXPECT_EQ(s16(4), Common::BitCastPtr<s16>(buffer + 1));
   EXPECT_EQ(s8(5), Common::BitCastPtr<s8>(buffer + 3));
-  EXPECT_EQ(data, std::vector<u8>({0, 4, 0, 5, 0, 0xFF, 0xFF, 0xFF, 0xFF}));
+  EXPECT_EQ(data, concat({{0}, bytes(u16(4)), {5, bytes(s16(2))[1]}, {0xFF, 0xFF, 0xFF, 0xFF}}));
 
   auto struct_array = Common::BitCastPtr<MyStruct>(buffer + 1);
   const MyStruct s1_again = struct_array[0];
   EXPECT_EQ(u16(4), s1_again.v16);
   EXPECT_EQ(u8(5), s1_again.v8);
   MyStruct s2 = struct_array[1];
-  EXPECT_EQ(u16(0xFF00), s2.v16);
+  EXPECT_EQ(value_of(u16(), {bytes(s16(2))[1], 0xFF}), s2.v16);
   EXPECT_EQ(u8(0xFF), s2.v8);
   struct_array[1] = s1_again;
   s2 = struct_array[1];
   EXPECT_EQ(u16(4), s2.v16);
   EXPECT_EQ(u8(5), s2.v8);
-  EXPECT_EQ(data, std::vector<u8>({0, 4, 0, 5, 4, 0, 5, 0xFF, 0xFF}));
+  EXPECT_EQ(data, concat({{0}, bytes(u16(4)), {5}, bytes(u16(4)), {5, 0xFF, 0xFF}}));
 }

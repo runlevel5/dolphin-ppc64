@@ -484,18 +484,18 @@ void DSPManager::Do_ARAM_DMA()
         // See below in the write section for more information
         if ((m_aram_info.Hex & 0xf) == 3)
         {
-          memory.Write_U64_Swap(*(u64*)&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask],
-                                m_aram_dma.MMAddr);
+          memory.CopyToEmu(m_aram_dma.MMAddr, &m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask],
+                           sizeof(u64));
         }
         else if ((m_aram_info.Hex & 0xf) == 4)
         {
-          memory.Write_U64_Swap(*(u64*)&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask],
-                                m_aram_dma.MMAddr);
+          memory.CopyToEmu(m_aram_dma.MMAddr, &m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask],
+                           sizeof(u64));
         }
         else
         {
-          memory.Write_U64_Swap(*(u64*)&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask],
-                                m_aram_dma.MMAddr);
+          memory.CopyToEmu(m_aram_dma.MMAddr, &m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask],
+                           sizeof(u64));
         }
 
         m_aram_dma.MMAddr += 8;
@@ -539,23 +539,23 @@ void DSPManager::Do_ARAM_DMA()
       {
         if ((m_aram_info.Hex & 0xf) == 3)
         {
-          *(u64*)&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask] =
-              Common::swap64(memory.Read_U64(m_aram_dma.MMAddr));
+          memory.CopyFromEmu(&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask], m_aram_dma.MMAddr,
+                             sizeof(u64));
         }
         else if ((m_aram_info.Hex & 0xf) == 4)
         {
           if (m_aram_dma.ARAddr < 0x400000)
           {
-            *(u64*)&m_aram.ptr[(m_aram_dma.ARAddr + 0x400000) & m_aram.mask] =
-                Common::swap64(memory.Read_U64(m_aram_dma.MMAddr));
+            memory.CopyFromEmu(&m_aram.ptr[(m_aram_dma.ARAddr + 0x400000) & m_aram.mask],
+                               m_aram_dma.MMAddr, sizeof(u64));
           }
-          *(u64*)&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask] =
-              Common::swap64(memory.Read_U64(m_aram_dma.MMAddr));
+          memory.CopyFromEmu(&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask], m_aram_dma.MMAddr,
+                             sizeof(u64));
         }
         else
         {
-          *(u64*)&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask] =
-              Common::swap64(memory.Read_U64(m_aram_dma.MMAddr));
+          memory.CopyFromEmu(&m_aram.ptr[m_aram_dma.ARAddr & m_aram.mask], m_aram_dma.MMAddr,
+                             sizeof(u64));
         }
 
         m_aram_dma.MMAddr += 8;
