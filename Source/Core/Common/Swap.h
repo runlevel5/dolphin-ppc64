@@ -113,6 +113,17 @@ constexpr T ToLittleEndian(T data)
 static_assert(FromBigEndian(std::bit_cast<u32>(std::array<u8, 4>{1, 2, 3, 4})) == 0x01020304);
 static_assert(FromLittleEndian(std::bit_cast<u32>(std::array<u8, 4>{1, 2, 3, 4})) == 0x04030201);
 
+// The bytes of a value in little-endian order, for hashes and other derived data that hosts of
+// either byte order must agree on.
+template <typename T>
+constexpr std::array<u8, sizeof(T)> LittleEndianBytes(T value)
+{
+  if constexpr (std::is_enum_v<T>)
+    return LittleEndianBytes(static_cast<std::underlying_type_t<T>>(value));
+  else
+    return std::bit_cast<std::array<u8, sizeof(T)>>(ToLittleEndian(value));
+}
+
 // Reads and writes of values stored in a fixed byte order, at any alignment.
 template <typename T>
 inline T ReadBigEndian(const u8* data)

@@ -825,7 +825,10 @@ std::string WStringToUTF8(std::wstring_view input)
 {
   // Note: Without LE iconv expects a BOM.
   // The "WCHAR_T" code would be appropriate, but it's apparently not in every iconv implementation.
-  return CodeToUTF8((sizeof(wchar_t) == 2) ? "UTF-16LE" : "UTF-32LE", input);
+  if constexpr (Common::kHostBigEndian)
+    return CodeToUTF8((sizeof(wchar_t) == 2) ? "UTF-16BE" : "UTF-32BE", input);
+  else
+    return CodeToUTF8((sizeof(wchar_t) == 2) ? "UTF-16LE" : "UTF-32LE", input);
 }
 
 std::string UTF16BEToUTF8(const char16_t* str, size_t max_size)

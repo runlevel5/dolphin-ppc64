@@ -22,7 +22,7 @@
 #endif
 #endif
 
-#if defined(_M_PPC_64) && defined(__CRYPTO__)
+#if defined(_M_PPC_64) && defined(__CRYPTO__) && !DOLPHIN_HOST_BIG_ENDIAN
 #include <altivec.h>
 #endif
 
@@ -416,7 +416,7 @@ static u64 GetHash64_ARMv8_CRC32(const u8* src, u32 len, u32 samples)
   return h[0] + (h[1] << 10) + (h[2] << 21) + (h[3] << 32);
 }
 
-#elif defined(_M_PPC_64) && defined(__CRYPTO__)
+#elif defined(_M_PPC_64) && defined(__CRYPTO__) && !DOLPHIN_HOST_BIG_ENDIAN
 
 // POWER8 and later have no CRC32 instruction, but have vpmsumd, a carry-less multiplication. This
 // folds the same 16-byte blocks that GetMurmurHash3 samples into four accumulators, as a CRC-64
@@ -486,7 +486,7 @@ static u64 SetHash64Function(const u8* src, u32 len, u32 samples)
   }
   else
   {
-#if defined(_M_PPC_64) && defined(__CRYPTO__)
+#if defined(_M_PPC_64) && defined(__CRYPTO__) && !DOLPHIN_HOST_BIG_ENDIAN
     s_texture_hash_func = &GetHash64_PPC64_VPMSUM;
 #else
     s_texture_hash_func = &GetMurmurHash3;

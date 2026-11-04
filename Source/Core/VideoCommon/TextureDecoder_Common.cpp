@@ -15,7 +15,7 @@
 #include "VideoCommon/LookUpTables.h"
 #include "VideoCommon/TextureDecoder.h"
 
-#if defined(_M_PPC_64) && defined(__VSX__)
+#if defined(_M_PPC_64) && defined(__VSX__) && !DOLPHIN_HOST_BIG_ENDIAN
 #include <altivec.h>
 #endif
 #include "VideoCommon/TextureDecoder_Util.h"
@@ -705,7 +705,8 @@ void TexDecoder_DecodeRGBA8FromTmem(u8* dst, const u8* src_ar, const u8* src_gb,
   }
 }
 
-#if defined(_M_PPC_64) && defined(__VSX__)
+// TODO: the vector decoder assumes a little-endian host
+#if defined(_M_PPC_64) && defined(__VSX__) && !DOLPHIN_HOST_BIG_ENDIAN
 namespace
 {
 using U8x16 = __vector unsigned char;

@@ -29,11 +29,12 @@
 namespace Common
 {
 
-static constexpr auto GetMaskFromNetworkPrefixLength(u32 network_prefix_length)
+// The mask in network byte order, as the address bytes are.
+static constexpr u32 GetMaskFromNetworkPrefixLength(u32 network_prefix_length)
 {
   return (network_prefix_length == 0) ?
              u32(0) :
-             u32(BigEndianValue(u32(-1) >> (32 - network_prefix_length)));
+             Common::ToBigEndian(u32(u32(-1) << (32 - network_prefix_length)));
 }
 
 u32 IPv4Port::GetIPAddressValue() const
