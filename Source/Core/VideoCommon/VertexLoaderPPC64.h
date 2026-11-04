@@ -35,6 +35,9 @@ private:
                         u8 scaling_exponent, const void* cache_base, PPC64Gen::GPR reg, u32 offset);
   void ReadVertexScalar(ComponentFormat format, int count_in, int count_out, bool scale,
                         u8 scaling_exponent, const void* cache_base, PPC64Gen::GPR reg, u32 offset);
+  // Loads of the vertex's big-endian values through a base and an index register.
+  void LoadBE16(PPC64Gen::GPR dst, PPC64Gen::GPR base, PPC64Gen::GPR index, bool sign_extend);
+  void LoadBE32(PPC64Gen::GPR dst, PPC64Gen::GPR base, PPC64Gen::GPR index);
   void ReadColor(VertexComponentFormat attribute, ColorFormat format, PPC64Gen::GPR reg,
                  u32 offset);
   void GenerateVertexLoader();

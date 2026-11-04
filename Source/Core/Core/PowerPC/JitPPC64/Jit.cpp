@@ -46,7 +46,7 @@ using namespace PPC64Gen;
 
 JitPPC64::JitPPC64(Core::System& system)
     : JitBase(system),
-      m_disassembler(HostDisassembler::Factory(HostDisassembler::Platform::ppc64le))
+      m_disassembler(HostDisassembler::Factory(HostDisassembler::Platform::ppc64))
 {
 }
 

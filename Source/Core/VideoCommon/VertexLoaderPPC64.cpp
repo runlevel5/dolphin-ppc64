@@ -11,6 +11,7 @@
 #include "Common/CPUDetect.h"
 #include "Common/CommonTypes.h"
 #include "Common/JitRegister.h"
+#include "Common/Swap.h"
 #include "VideoCommon/CPMemory.h"
 #include "VideoCommon/VertexLoaderManager.h"
 
@@ -55,12 +56,21 @@ alignas(16) static const float scale_factors[] = {
 
 // The VPERM control that moves an attribute's elements, as loaded, into word elements in the
 // order a store puts them in memory. Register bytes are numbered from the most significant, as
-// VPERM numbers them. A load of 4 or 8 bytes (lxsiwzx, lxsdx) makes doubleword 0 the little-endian
-// integer of the bytes, so memory byte k is register byte 7 - k; a load of 16 (lxvx) makes memory
-// byte k register byte 15 - k. Element j goes right-aligned into the word that a store of
-// stored_words words puts j-th in memory: word 1 for stxsiwx, words 1, 0 for stxsd, words 3 to 0
-// for stxvx. The other bytes come from the zero register, VPERM's second source. The control is
-// loaded with lxvx too, so its bytes are stored reversed: control byte i at memory byte 15 - i.
+// VPERM numbers them.
+//
+// On a little-endian host, a load of 4 or 8 bytes (lxsiwzx, lxsdx) makes doubleword 0 the
+// little-endian integer of the bytes, so memory byte k is register byte 7 - k; a load of 16 (lxvx)
+// makes memory byte k register byte 15 - k. Element j goes right-aligned into the word that a
+// store of stored_words words puts j-th in memory: word 1 for stxsiwx, words 1, 0 for stxsd, words
+// 3 to 0 for stxvx. The control is loaded with lxvx too, so its bytes are stored reversed: control
+// byte i at memory byte 15 - i.
+//
+// On a big-endian host, memory byte k is register byte k, except that lxsiwzx puts the word in
+// word element 1, register bytes 4 to 7. A store puts the words in memory in order: word 1 for
+// stxsiwx, words 0, 1 for stxsd, words 0 to 3 for stxvx, and the control's bytes are stored in
+// order.
+//
+// The other bytes come from the zero register, VPERM's second source.
 struct Permute
 {
   alignas(16) u8 bytes[16];
@@ -68,18 +78,22 @@ struct Permute
 
 constexpr Permute MakePermute(int elem_size, int count, int stored_words, bool load16)
 {
+  const bool load4 = elem_size * count <= 4;
   Permute p{};
   for (u8& b : p.bytes)
     b = 16;
   for (int j = 0; j < count; j++)
   {
-    const int word = stored_words == 1 ? 1 : stored_words - 1 - j;
-    if (word < 0)
+    if (stored_words != 1 && j >= stored_words)
       break;  // More elements than words: a combination that isn't used.
+    const int word = stored_words == 1 ? 1 : Common::kHostBigEndian ? j : stored_words - 1 - j;
     for (int e = 0; e < elem_size; e++)
     {
       const int mem = j * elem_size + e;
-      p.bytes[15 - (word * 4 + 4 - elem_size + e)] = static_cast<u8>(load16 ? 15 - mem : 7 - mem);
+      const int control = word * 4 + 4 - elem_size + e;
+      const int source = Common::kHostBigEndian ? (load4 ? 4 + mem : mem) :
+                                                  (load16 ? 15 - mem : 7 - mem);
+      p.bytes[Common::kHostBigEndian ? control : 15 - control] = static_cast<u8>(source);
     }
   }
   return p;
@@ -102,6 +116,26 @@ constexpr auto s_permutes = [] {
               MakePermute(elem_size, count, stored_words, load16);
   return permutes;
 }();
+
+// The vertex's values are big-endian, which a little-endian host loads byte-reversed.
+void VertexLoaderPPC64::LoadBE16(GPR dst, GPR base, GPR index, bool sign_extend)
+{
+  if (Common::kHostBigEndian)
+  {
+    sign_extend ? LHAX(dst, base, index) : LHZX(dst, base, index);
+  }
+  else
+  {
+    LHBRX(dst, base, index);
+    if (sign_extend)
+      EXTSH(dst, dst);
+  }
+}
+
+void VertexLoaderPPC64::LoadBE32(GPR dst, GPR base, GPR index)
+{
+  Common::kHostBigEndian ? LWZX(dst, base, index) : LWBRX(dst, base, index);
+}
 
 VertexLoaderPPC64::VertexLoaderPPC64(const TVtxDesc& vtx_desc, const VAT& vtx_att)
     : VertexLoaderBase(vtx_desc, vtx_att)
@@ -139,7 +173,7 @@ std::pair<GPR, u32> VertexLoaderPPC64::GetVertexAddr(CPArray array, VertexCompon
   else  // Index16
   {
     LI(offset_reg, static_cast<s16>(m_src_ofs));
-    LHBRX(scratch1_reg, src_reg, offset_reg);
+    LoadBE16(scratch1_reg, src_reg, offset_reg, false);
     m_src_ofs += 2;
   }
 
@@ -323,9 +357,9 @@ void VertexLoaderPPC64::ReadVertexScalar(ComponentFormat format, int count_in, i
     const s16 dst = static_cast<s16>(m_dst_ofs + i * 4);
     if (format >= ComponentFormat::Float)
     {
-      // Big-endian to little-endian.
+      // Big-endian to the host's order.
       LI(offset_reg, src);
-      LWBRX(scratch2_reg, reg, offset_reg);
+      LoadBE32(scratch2_reg, reg, offset_reg);
       STW(scratch2_reg, dst_reg, dst);
     }
     else
@@ -341,13 +375,12 @@ void VertexLoaderPPC64::ReadVertexScalar(ComponentFormat format, int count_in, i
         break;
       case ComponentFormat::UShort:
         LI(offset_reg, src);
-        LHBRX(scratch2_reg, reg, offset_reg);
+        LoadBE16(scratch2_reg, reg, offset_reg, false);
         break;
       case ComponentFormat::Short:
       default:
         LI(offset_reg, src);
-        LHBRX(scratch2_reg, reg, offset_reg);
-        EXTSH(scratch2_reg, scratch2_reg);
+        LoadBE16(scratch2_reg, reg, offset_reg, true);
         break;
       }
       // float(value) * scale, which is exact, in double precision, then stored as a single.
@@ -382,10 +415,21 @@ void VertexLoaderPPC64::ReadVertexScalar(ComponentFormat format, int count_in, i
 void VertexLoaderPPC64::ReadColor(VertexComponentFormat attribute, ColorFormat format, GPR reg,
                                   u32 offset)
 {
-  // The output is the bytes R, G, B, A, which is ABGR in a little-endian word.
+  // The output is the bytes R, G, B, A: ABGR in a little-endian word, RGBA in a big-endian one.
+  constexpr u32 r_shift = Common::kHostBigEndian ? 24 : 0;
+  constexpr u32 g_shift = Common::kHostBigEndian ? 16 : 8;
+  constexpr u32 b_shift = Common::kHostBigEndian ? 8 : 16;
+  constexpr u32 a_shift = Common::kHostBigEndian ? 0 : 24;
   const GPR in = scratch3_reg;
   const GPR out = scratch4_reg;
   const GPR tmp = scratch5_reg;
+
+  const auto set_alpha = [&](GPR reg_) {
+    if (Common::kHostBigEndian)
+      ORI(reg_, reg_, 0x00FF);
+    else
+      ORIS(reg_, reg_, 0xFF00);
+  };
 
   // out |= expand(field) << shift, where the field is width bits at the given bit of in, and
   // expanding repeats its top bits below it, to make 8 bits.
@@ -418,7 +462,7 @@ void VertexLoaderPPC64::ReadColor(VertexComponentFormat attribute, ColorFormat f
   case ColorFormat::RGBA8888:
     LWZ(out, reg, static_cast<s16>(offset));
     if (format != ColorFormat::RGBA8888)
-      ORIS(out, out, 0xFF00);
+      set_alpha(out);
     STW(out, dst_reg, static_cast<s16>(m_dst_ofs));
     load_bytes = format == ColorFormat::RGB888 ? 3 : 4;
     break;
@@ -426,41 +470,47 @@ void VertexLoaderPPC64::ReadColor(VertexComponentFormat attribute, ColorFormat f
   case ColorFormat::RGB565:
     // RRRRRGGG GGGBBBBB, big-endian
     LI(offset_reg, static_cast<s16>(offset));
-    LHBRX(in, reg, offset_reg);
-    expand_field(11, 5, 0, true);   // R
-    expand_field(5, 6, 8, false);   // G
-    expand_field(0, 5, 16, false);  // B
-    ORIS(out, out, 0xFF00);         // A
+    LoadBE16(in, reg, offset_reg, false);
+    expand_field(11, 5, r_shift, true);
+    expand_field(5, 6, g_shift, false);
+    expand_field(0, 5, b_shift, false);
+    set_alpha(out);
     STW(out, dst_reg, static_cast<s16>(m_dst_ofs));
     load_bytes = 2;
     break;
 
   case ColorFormat::RGBA4444:
-    // RRRRGGGG BBBBAAAA, read little-endian: BBBBAAAA RRRRGGGG
-    LHZ(in, reg, static_cast<s16>(offset));
-    RLWINM(out, in, 32 - 4, 28, 31);  // R
-    RLWINM(tmp, in, 8, 20, 23);       // G
+  {
+    // RRRRGGGG BBBBAAAA, big-endian
+    LI(offset_reg, static_cast<s16>(offset));
+    LoadBE16(in, reg, offset_reg, false);
+    // Each nibble goes to the low nibble of its byte, then is repeated in the high one.
+    const auto nibble = [&](GPR dst, u32 from_bit, u32 to_bit) {
+      RLWINM(dst, in, (to_bit + 32 - from_bit) % 32, 31 - (to_bit + 3), 31 - to_bit);
+    };
+    nibble(out, 12, r_shift);
+    nibble(tmp, 8, g_shift);
     OR(out, out, tmp);
-    RLWINM(tmp, in, 4, 12, 15);  // B
+    nibble(tmp, 4, b_shift);
     OR(out, out, tmp);
-    RLWINM(tmp, in, 16, 4, 7);  // A
+    nibble(tmp, 0, a_shift);
     OR(out, out, tmp);
-    // Repeat each nibble.
     SLWI(tmp, out, 4);
     OR(out, out, tmp);
     STW(out, dst_reg, static_cast<s16>(m_dst_ofs));
     load_bytes = 2;
     break;
+  }
 
   case ColorFormat::RGBA6666:
   default:
     // RRRRRRGG GGGGBBBB BBAAAAAA, big-endian, read as the low 24 bits of the word that ends with it
     LI(offset_reg, static_cast<s16>(offset - 1));
-    LWBRX(in, reg, offset_reg);
-    expand_field(18, 6, 0, true);   // R
-    expand_field(12, 6, 8, false);  // G
-    expand_field(6, 6, 16, false);  // B
-    expand_field(0, 6, 24, false);  // A
+    LoadBE32(in, reg, offset_reg);
+    expand_field(18, 6, r_shift, true);
+    expand_field(12, 6, g_shift, false);
+    expand_field(6, 6, b_shift, false);
+    expand_field(0, 6, a_shift, false);
     STW(out, dst_reg, static_cast<s16>(m_dst_ofs));
     load_bytes = 3;
     break;

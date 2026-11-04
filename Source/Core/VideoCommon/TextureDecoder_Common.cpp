@@ -15,7 +15,7 @@
 #include "VideoCommon/LookUpTables.h"
 #include "VideoCommon/TextureDecoder.h"
 
-#if defined(_M_PPC_64) && defined(__VSX__) && !DOLPHIN_HOST_BIG_ENDIAN
+#if defined(_M_PPC_64) && defined(__VSX__)
 #include <altivec.h>
 #endif
 #include "VideoCommon/TextureDecoder_Util.h"
@@ -705,8 +705,7 @@ void TexDecoder_DecodeRGBA8FromTmem(u8* dst, const u8* src_ar, const u8* src_gb,
   }
 }
 
-// TODO: the vector decoder assumes a little-endian host
-#if defined(_M_PPC_64) && defined(__VSX__) && !DOLPHIN_HOST_BIG_ENDIAN
+#if defined(_M_PPC_64) && defined(__VSX__)
 namespace
 {
 using U8x16 = __vector unsigned char;
@@ -730,10 +729,21 @@ inline F32x4 Unfused(F32x4 value)
 {
   constexpr u8 Z = 16;
   const U8x16 zero = vec_splats(static_cast<unsigned char>(0));
-  const U8x16 y1_mask = {0, Z, Z, Z, 4, Z, Z, Z, 8, Z, Z, Z, 12, Z, Z, Z};
-  const U8x16 u_mask = {1, Z, Z, Z, 5, Z, Z, Z, 9, Z, Z, Z, 13, Z, Z, Z};
-  const U8x16 y2_mask = {2, Z, Z, Z, 6, Z, Z, Z, 10, Z, Z, Z, 14, Z, Z, Z};
-  const U8x16 v_mask = {3, Z, Z, Z, 7, Z, Z, Z, 11, Z, Z, Z, 15, Z, Z, Z};
+  // Each sample's byte goes to the least significant byte of its word: the first byte of the word
+  // on a little-endian host, the last on a big-endian one.
+  const auto sample_mask = [](u8 first) {
+    U8x16 mask = vec_splats(static_cast<unsigned char>(Z));
+    for (int word = 0; word < 4; word++)
+    {
+      mask[4 * word + (Common::kHostBigEndian ? 3 : 0)] =
+          static_cast<unsigned char>(first + 4 * word);
+    }
+    return mask;
+  };
+  const U8x16 y1_mask = sample_mask(0);
+  const U8x16 u_mask = sample_mask(1);
+  const U8x16 y2_mask = sample_mask(2);
+  const U8x16 v_mask = sample_mask(3);
   // R, G and B of the first pixels in bytes 0-3 of their packs, of the second pixels in 4-7.
   const U8x16 rgba_lo = {0, 8, 16, 24, 4, 12, 20, 24, 1, 9, 17, 24, 5, 13, 21, 24};
   const U8x16 rgba_hi = {2, 10, 18, 24, 6, 14, 22, 24, 3, 11, 19, 24, 7, 15, 23, 24};

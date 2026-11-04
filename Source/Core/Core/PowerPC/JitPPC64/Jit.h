@@ -276,6 +276,13 @@ protected:
   void EmitLoadToVSR(u32 size, PPC64Gen::VSR raw, PPC64Gen::GPR value, PPC64Gen::GPR addr);
   void EmitStoreFromVSR(u32 size, PPC64Gen::VSR src, PPC64Gen::GPR value, PPC64Gen::GPR addr);
   void EmitMemoryAccessToAddress(MemAccess access, PPC64Gen::GPR value, PPC64Gen::GPR addr);
+  // A load or store of the console's memory through a base and an index register, in the
+  // console's byte order, which is the reverse of a little-endian host's; `reverse` is for lwbrx
+  // and friends. The load or store is the first instruction emitted.
+  void EmitGuestLoad(u32 size, bool reverse, bool sign_extend, PPC64Gen::GPR value,
+                     PPC64Gen::GPR base, PPC64Gen::GPR index);
+  void EmitGuestStore(u32 size, bool reverse, PPC64Gen::GPR value, PPC64Gen::GPR base,
+                      PPC64Gen::GPR index);
   void EmitFastAccess(MemAccess access, PPC64Gen::GPR value, PPC64Gen::GPR addr,
                       PPC64Gen::GPR base = MEM_REG);
   // Saves the scratch GPRs in use, but not those in except, around a call. Returns the ones saved.

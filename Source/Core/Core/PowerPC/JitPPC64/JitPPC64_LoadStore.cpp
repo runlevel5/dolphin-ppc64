@@ -25,6 +25,7 @@
 #include "Common/CommonTypes.h"
 #include "Common/MemoryUtil.h"
 #include "Common/PPC64Emitter.h"
+#include "Common/Swap.h"
 #include "Core/HW/GPFifo.h"
 #include "Core/HW/Memmap.h"
 #include "Core/PowerPC/Gekko.h"
@@ -119,18 +120,24 @@ void JitPPC64::EmitLoadToVSR(u32 size, VSR raw, GPR value, GPR addr)
     return;
   }
 
-  // The VSX load (into doubleword 0, or every word) is the access that faults.
+  // The VSX load (into doubleword 0, or every word) is the access that faults. A little-endian
+  // host then reverses the bytes.
+  const auto load = [&](GPR base, GPR index) {
+    if (size == 64)
+    {
+      LXSDX(raw, base, index);
+      if (!Common::kHostBigEndian)
+        XXBRD(raw, raw);
+    }
+    else
+    {
+      LXVWSX(raw, base, index);
+      if (!Common::kHostBigEndian)
+        XXBRW(raw, raw);
+    }
+  };
   const u8* fault_pc = GetCodePtr();
-  if (size == 64)
-  {
-    LXSDX(raw, MEM_REG, addr);
-    XXBRD(raw, raw);
-  }
-  else
-  {
-    LXVWSX(raw, MEM_REG, addr);
-    XXBRW(raw, raw);
-  }
+  load(MEM_REG, addr);
   const u8* fast_end = GetCodePtr();
 
   SwitchToFarCode();
@@ -138,16 +145,7 @@ void JitPPC64::EmitLoadToVSR(u32 size, VSR raw, GPR value, GPR addr)
   if (CanTranslateInline())
   {
     const std::vector<FixupBranch> misses = EmitInlineTranslation({.size = size}, addr);
-    if (size == 64)
-    {
-      LXSDX(raw, GPR::R0, GPR::R12);
-      XXBRD(raw, raw);
-    }
-    else
-    {
-      LXVWSX(raw, GPR::R0, GPR::R12);
-      XXBRW(raw, raw);
-    }
+    load(GPR::R0, GPR::R12);
     B(fast_end);
     for (const FixupBranch& miss : misses)
       SetJumpTarget(miss);
@@ -168,16 +166,21 @@ void JitPPC64::EmitStoreFromVSR(u32 size, VSR src, GPR value, GPR addr)
     return;
   }
 
-  // The byte-reversed value is in VS0, which isn't allocated. The store is the access that faults.
-  if (size == 64)
-    XXBRD(VSR::VS0, src);
-  else
-    XXBRW(VSR::VS0, src);
+  // A little-endian host stores the byte-reversed value, put in VS0, which isn't allocated. The
+  // store is the access that faults.
+  const VSR stored = Common::kHostBigEndian ? src : VSR::VS0;
+  if (!Common::kHostBigEndian)
+  {
+    if (size == 64)
+      XXBRD(stored, src);
+    else
+      XXBRW(stored, src);
+  }
   const u8* fault_pc = GetCodePtr();
   if (size == 64)
-    STXSDX(VSR::VS0, MEM_REG, addr);
+    STXSDX(stored, MEM_REG, addr);
   else
-    STXSIWX(VSR::VS0, MEM_REG, addr);
+    STXSIWX(stored, MEM_REG, addr);
   const u8* fast_end = GetCodePtr();
 
   SwitchToFarCode();
@@ -187,9 +190,9 @@ void JitPPC64::EmitStoreFromVSR(u32 size, VSR src, GPR value, GPR addr)
     const std::vector<FixupBranch> misses =
         EmitInlineTranslation({.store = true, .size = size}, addr);
     if (size == 64)
-      STXSDX(VSR::VS0, GPR::R0, GPR::R12);
+      STXSDX(stored, GPR::R0, GPR::R12);
     else
-      STXSIWX(VSR::VS0, GPR::R0, GPR::R12);
+      STXSIWX(stored, GPR::R0, GPR::R12);
     B(fast_end);
     for (const FixupBranch& miss : misses)
       SetJumpTarget(miss);
@@ -213,21 +216,7 @@ void JitPPC64::EmitMemoryAccess(MemAccess access, GPR value, GPR addr)
     const FixupBranch not_gather_pipe = BC(CCFlags::NE, CRF::CR1);
 
     LD(ptr, PPC_REG, PPCSTATE_OFF(gather_pipe_ptr));
-    switch (access.size)
-    {
-    case 64:
-      STDBRX(value, GPR::R0, ptr);
-      break;
-    case 32:
-      access.reverse ? STWX(value, GPR::R0, ptr) : STWBRX(value, GPR::R0, ptr);
-      break;
-    case 16:
-      access.reverse ? STHX(value, GPR::R0, ptr) : STHBRX(value, GPR::R0, ptr);
-      break;
-    default:
-      STBX(value, GPR::R0, ptr);
-      break;
-    }
+    EmitGuestStore(access.size, access.reverse, value, GPR::R0, ptr);
     ADDI(ptr, ptr, static_cast<s16>(access.size / 8));
     STD(ptr, PPC_REG, PPCSTATE_OFF(gather_pipe_ptr));
     {
@@ -286,46 +275,64 @@ void JitPPC64::EmitMemoryAccessToAddress(MemAccess access, GPR value, GPR addr)
   SwitchToNearCode();
 }
 
+void JitPPC64::EmitGuestLoad(u32 size, bool reverse, bool sign_extend, GPR value, GPR base,
+                             GPR index)
+{
+  // Bytes are reversed when the access's byte order is the host's opposite.
+  const bool byte_reversed = reverse == Common::kHostBigEndian;
+  switch (size)
+  {
+  case 64:
+    byte_reversed ? LDBRX(value, base, index) : LDX(value, base, index);
+    break;
+  case 32:
+    byte_reversed ? LWBRX(value, base, index) : LWZX(value, base, index);
+    break;
+  case 16:
+    if (byte_reversed)
+    {
+      LHBRX(value, base, index);
+      if (sign_extend)
+        EXTSH(value, value);
+    }
+    else
+    {
+      sign_extend ? LHAX(value, base, index) : LHZX(value, base, index);
+    }
+    break;
+  default:
+    LBZX(value, base, index);
+    break;
+  }
+}
+
+void JitPPC64::EmitGuestStore(u32 size, bool reverse, GPR value, GPR base, GPR index)
+{
+  const bool byte_reversed = reverse == Common::kHostBigEndian;
+  switch (size)
+  {
+  case 64:
+    byte_reversed ? STDBRX(value, base, index) : STDX(value, base, index);
+    break;
+  case 32:
+    byte_reversed ? STWBRX(value, base, index) : STWX(value, base, index);
+    break;
+  case 16:
+    byte_reversed ? STHBRX(value, base, index) : STHX(value, base, index);
+    break;
+  default:
+    STBX(value, base, index);
+    break;
+  }
+}
+
 void JitPPC64::EmitFastAccess(MemAccess access, GPR value, GPR addr, GPR base)
 {
   // The first instruction is the one that faults, and is patched.
   if (access.store)
-  {
-    switch (access.size)
-    {
-    case 64:
-      STDBRX(value, base, addr);
-      break;
-    case 32:
-      access.reverse ? STWX(value, base, addr) : STWBRX(value, base, addr);
-      break;
-    case 16:
-      access.reverse ? STHX(value, base, addr) : STHBRX(value, base, addr);
-      break;
-    default:
-      STBX(value, base, addr);
-      break;
-    }
-    return;
-  }
-
-  switch (access.size)
-  {
-  case 64:
-    LDBRX(value, base, addr);
-    break;
-  case 32:
-    access.reverse ? LWZX(value, base, addr) : LWBRX(value, base, addr);
-    break;
-  case 16:
-    access.reverse ? LHZX(value, base, addr) : LHBRX(value, base, addr);
-    if (access.sign_extend)
-      EXTSH(value, value);
-    break;
-  default:
-    LBZX(value, base, addr);
-    break;
-  }
+    EmitGuestStore(access.size, access.reverse, value, base, addr);
+  else
+    EmitGuestLoad(access.size, access.reverse, access.sign_extend, value, base, addr);
 }
 
 u32 JitPPC64::SlowAccessRoutineIndex(MemAccess access)

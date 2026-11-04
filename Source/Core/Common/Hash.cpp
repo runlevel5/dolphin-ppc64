@@ -13,6 +13,7 @@
 
 #include "Common/CPUDetect.h"
 #include "Common/Intrinsics.h"
+#include "Common/Swap.h"
 
 #ifdef _M_ARM_64
 #ifdef _MSC_VER
@@ -22,7 +23,7 @@
 #endif
 #endif
 
-#if defined(_M_PPC_64) && defined(__CRYPTO__) && !DOLPHIN_HOST_BIG_ENDIAN
+#if defined(_M_PPC_64) && defined(__CRYPTO__)
 #include <altivec.h>
 #endif
 
@@ -416,7 +417,7 @@ static u64 GetHash64_ARMv8_CRC32(const u8* src, u32 len, u32 samples)
   return h[0] + (h[1] << 10) + (h[2] << 21) + (h[3] << 32);
 }
 
-#elif defined(_M_PPC_64) && defined(__CRYPTO__) && !DOLPHIN_HOST_BIG_ENDIAN
+#elif defined(_M_PPC_64) && defined(__CRYPTO__)
 
 // POWER8 and later have no CRC32 instruction, but have vpmsumd, a carry-less multiplication. This
 // folds the same 16-byte blocks that GetMurmurHash3 samples into four accumulators, as a CRC-64
@@ -438,8 +439,19 @@ static u64 GetHash64_PPC64_VPMSUM(const u8* src, u32 len, u32 samples)
   // x^128 and x^192 modulo the polynomial, for the low and high halves of an accumulator.
   const Vec k = {0x05f5c3c7eb52fab6, 0x4eb938a7d257740e};
   const auto fold = [&k](Vec a, Vec b) -> Vec { return __builtin_crypto_vpmsumd(a, k) ^ b; };
+  // Each block's doublewords are taken as little-endian integers on either host, so that the hash
+  // is the same.
   const auto block = [src](u32 i) -> Vec {
-    return vec_xl(0, reinterpret_cast<const unsigned long long*>(src + 16 * i));
+    const Vec loaded = vec_xl(0, reinterpret_cast<const unsigned long long*>(src + 16 * i));
+    if constexpr (Common::kHostBigEndian)
+    {
+      const __vector unsigned char reverse = {7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8};
+      return vec_perm(loaded, loaded, reverse);
+    }
+    else
+    {
+      return loaded;
+    }
   };
 
   Vec h[4] = {{len, 0}, {0, 0}, {0, 0}, {0, 0}};
@@ -461,7 +473,7 @@ static u64 GetHash64_PPC64_VPMSUM(const u8* src, u32 len, u32 samples)
   {
     u64 tail[2] = {};
     std::memcpy(tail, src + nblocks * 16, len & 15);
-    h[1] = fold(h[1], Vec{tail[0], tail[1]});
+    h[1] = fold(h[1], Vec{Common::FromLittleEndian(tail[0]), Common::FromLittleEndian(tail[1])});
   }
 
   const Vec result = fold(fold(fold(h[0], h[1]), h[2]), h[3]);
@@ -486,7 +498,7 @@ static u64 SetHash64Function(const u8* src, u32 len, u32 samples)
   }
   else
   {
-#if defined(_M_PPC_64) && defined(__CRYPTO__) && !DOLPHIN_HOST_BIG_ENDIAN
+#if defined(_M_PPC_64) && defined(__CRYPTO__)
     s_texture_hash_func = &GetHash64_PPC64_VPMSUM;
 #else
     s_texture_hash_func = &GetMurmurHash3;

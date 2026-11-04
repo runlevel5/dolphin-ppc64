@@ -3,6 +3,8 @@
 
 #include "Common/HostDisassembler.h"
 
+#include "Common/Swap.h"
+
 #include <span>
 
 #include <fmt/format.h>
@@ -140,8 +142,10 @@ std::unique_ptr<HostDisassembler> HostDisassembler::Factory(Platform arch)
     return std::make_unique<HostDisassemblerLLVM>("x86_64-none-unknown");
   case Platform::aarch64:
     return std::make_unique<HostDisassemblerLLVM>("aarch64-none-unknown", "cortex-a57", 4);
-  case Platform::ppc64le:
-    return std::make_unique<HostDisassemblerLLVM>("powerpc64le-unknown-linux-gnu", "pwr8", 4);
+  case Platform::ppc64:
+    return std::make_unique<HostDisassemblerLLVM>(
+        Common::kHostBigEndian ? "powerpc64-unknown-linux-gnu" : "powerpc64le-unknown-linux-gnu",
+        "pwr8", 4);
 #elif defined(_M_X86_64)
   case Platform::x86_64:
     return std::make_unique<HostDisassemblerBochs>();

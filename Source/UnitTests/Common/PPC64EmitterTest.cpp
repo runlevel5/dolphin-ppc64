@@ -15,6 +15,7 @@
 #include "Common/CommonTypes.h"
 #include "Common/MemoryUtil.h"
 #include "Common/PPC64Emitter.h"
+#include "Common/Swap.h"
 
 using namespace PPC64Gen;
 using enum GPR;
@@ -878,8 +879,8 @@ TEST(PPC64Emitter, ISA3_0)
     code.MFVSRLD(R3, VS35);
     code.BLR();
   });
-  // In the host's (little-endian) order, doubleword 1 is the one at the lower address.
-  EXPECT_EQ(memory[0], code.Call<u64>(memory.data(), stored.data()));
+  // In a little-endian host's order, doubleword 1 is the one at the lower address.
+  EXPECT_EQ(memory[Common::kHostBigEndian ? 1 : 0], code.Call<u64>(memory.data(), stored.data()));
   EXPECT_EQ(memory, stored);
   stored = {};
   code.Emit([&] {
@@ -1187,19 +1188,21 @@ TEST(PPC64Emitter, ByteReversedLoadsAndStores)
     code.LHBRX(R3, R0, R3);
     code.BLR();
   });
-  EXPECT_EQ(0x0123u, code.Call<u64>(memory.data()));
+  // The byte-reversed accesses use the host's opposite byte order: they load the bytes as
+  // little-endian values, and store the bytes of a value's reversal.
+  EXPECT_EQ(Common::ToLittleEndian<u16>(0x0123), code.Call<u64>(memory.data()));
 
   code.Emit([&] {
     code.LWBRX(R3, R0, R3);
     code.BLR();
   });
-  EXPECT_EQ(0x01234567u, code.Call<u64>(memory.data()));
+  EXPECT_EQ(Common::ToLittleEndian<u32>(0x01234567), code.Call<u64>(memory.data()));
 
   code.Emit([&] {
     code.LDBRX(R3, R0, R3);
     code.BLR();
   });
-  EXPECT_EQ(0x0123456789ABCDEFu, code.Call<u64>(memory.data()));
+  EXPECT_EQ(Common::ToLittleEndian<u64>(0x0123456789ABCDEF), code.Call<u64>(memory.data()));
 
   alignas(8) std::array<u8, 8> stored{};
   code.Emit([&] {
@@ -1207,14 +1210,17 @@ TEST(PPC64Emitter, ByteReversedLoadsAndStores)
     code.BLR();
   });
   code.Call<void>(stored.data(), u64(0x01234567));
-  EXPECT_EQ((std::array<u8, 8>{0x01, 0x23, 0x45, 0x67, 0, 0, 0, 0}), stored);
+  const auto word_bytes = std::bit_cast<std::array<u8, 4>>(Common::bswap32(0x01234567));
+  EXPECT_EQ((std::array<u8, 8>{word_bytes[0], word_bytes[1], word_bytes[2], word_bytes[3], 0, 0,
+                               0, 0}),
+            stored);
 
   code.Emit([&] {
     code.STDBRX(R4, R0, R3);
     code.BLR();
   });
   code.Call<void>(stored.data(), u64(0x0123456789ABCDEF));
-  EXPECT_EQ(memory, stored);
+  EXPECT_EQ((std::bit_cast<std::array<u8, 8>>(Common::bswap64(0x0123456789ABCDEF))), stored);
 }
 
 TEST(PPC64Emitter, CallFunction)
