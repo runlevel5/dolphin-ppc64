@@ -140,7 +140,7 @@ struct CachedInterpreter::InterpretOperands
   Interpreter& interpreter;
   void (*func)(Interpreter&, UGeckoInstruction);  // Interpreter::Instruction
   u32 current_pc;
-  UGeckoInstruction inst;
+  u32 inst;  // The word: the operands must be trivially copyable, and UGeckoInstruction isn't
 };
 
 struct CachedInterpreter::InterpretAndCheckExceptionsOperands : InterpretOperands

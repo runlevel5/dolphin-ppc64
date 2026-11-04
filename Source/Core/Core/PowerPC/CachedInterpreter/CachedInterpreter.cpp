@@ -397,7 +397,7 @@ bool CachedInterpreter::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
           (!op.canEndBlock && ShouldHandleFPExceptionForInstruction(&op)))
       {
         const InterpretAndCheckExceptionsOperands operands = {
-            {interpreter, Interpreter::GetInterpreterOp(op.inst), js.compilerPC, op.inst},
+            {interpreter, Interpreter::GetInterpreterOp(op.inst), js.compilerPC, op.inst.hex},
             power_pc,
             js.downcountAmount};
         Write(op.canEndBlock ? CallbackCast(InterpretAndCheckExceptions<true>) :
@@ -407,7 +407,7 @@ bool CachedInterpreter::DoJit(u32 em_address, JitBlock* b, u32 nextPC)
       else
       {
         const InterpretOperands operands = {interpreter, Interpreter::GetInterpreterOp(op.inst),
-                                            js.compilerPC, op.inst};
+                                            js.compilerPC, op.inst.hex};
         Write(op.canEndBlock ? CallbackCast(Interpret<true>) : CallbackCast(Interpret<false>),
               operands);
       }
