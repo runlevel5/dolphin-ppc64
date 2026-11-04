@@ -561,7 +561,16 @@ void VertexLoaderPPC64::GenerateVertexLoader()
   {
     LBZ(scratch2_reg, src_reg, static_cast<s16>(m_src_ofs));
     CLRLWI(scratch2_reg, scratch2_reg, 26);  // & 0x3F
-    STW(scratch2_reg, dst_reg, static_cast<s16>(m_dst_ofs));
+    // The index is the first of the attribute's four bytes.
+    if (Common::kHostBigEndian)
+    {
+      SLWI(scratch4_reg, scratch2_reg, 24);
+      STW(scratch4_reg, dst_reg, static_cast<s16>(m_dst_ofs));
+    }
+    else
+    {
+      STW(scratch2_reg, dst_reg, static_cast<s16>(m_dst_ofs));
+    }
 
     // Z-Freeze
     CMPWI(CRF::CR1, remaining_reg, 3);

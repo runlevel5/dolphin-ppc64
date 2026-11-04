@@ -436,16 +436,19 @@ static u64 GetHash64_PPC64_VPMSUM(const u8* src, u32 len, u32 samples)
   if (Step < 1)
     Step = 1;
 
+  // vpmsumd works on the register's doublewords, so a big-endian host keeps the same register
+  // contents as a little-endian one, whose element 0 is the low doubleword: it reverses the bytes
+  // of a loaded block, and swaps the elements of the other vectors.
+  constexpr bool swapped = Common::kHostBigEndian;
+  const auto make = [](u64 low, u64 high) -> Vec { return swapped ? Vec{high, low} : Vec{low, high}; };
   // x^128 and x^192 modulo the polynomial, for the low and high halves of an accumulator.
-  const Vec k = {0x05f5c3c7eb52fab6, 0x4eb938a7d257740e};
+  const Vec k = make(0x05f5c3c7eb52fab6, 0x4eb938a7d257740e);
   const auto fold = [&k](Vec a, Vec b) -> Vec { return __builtin_crypto_vpmsumd(a, k) ^ b; };
-  // Each block's doublewords are taken as little-endian integers on either host, so that the hash
-  // is the same.
   const auto block = [src](u32 i) -> Vec {
     const Vec loaded = vec_xl(0, reinterpret_cast<const unsigned long long*>(src + 16 * i));
-    if constexpr (Common::kHostBigEndian)
+    if constexpr (swapped)
     {
-      const __vector unsigned char reverse = {7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8};
+      const __vector unsigned char reverse = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
       return vec_perm(loaded, loaded, reverse);
     }
     else
@@ -454,7 +457,7 @@ static u64 GetHash64_PPC64_VPMSUM(const u8* src, u32 len, u32 samples)
     }
   };
 
-  Vec h[4] = {{len, 0}, {0, 0}, {0, 0}, {0, 0}};
+  Vec h[4] = {make(len, 0), make(0, 0), make(0, 0), make(0, 0)};
   u32 i = 0;
   if (nblocks > Step * 3)
   {
@@ -473,11 +476,13 @@ static u64 GetHash64_PPC64_VPMSUM(const u8* src, u32 len, u32 samples)
   {
     u64 tail[2] = {};
     std::memcpy(tail, src + nblocks * 16, len & 15);
-    h[1] = fold(h[1], Vec{Common::FromLittleEndian(tail[0]), Common::FromLittleEndian(tail[1])});
+    h[1] = fold(h[1], make(Common::FromLittleEndian(tail[0]), Common::FromLittleEndian(tail[1])));
   }
 
   const Vec result = fold(fold(fold(h[0], h[1]), h[2]), h[3]);
-  return fmix64(result[0] ^ fmix64(result[1]));
+  const u64 low = result[swapped ? 1 : 0];
+  const u64 high = result[swapped ? 0 : 1];
+  return fmix64(low ^ fmix64(high));
 }
 
 #endif
