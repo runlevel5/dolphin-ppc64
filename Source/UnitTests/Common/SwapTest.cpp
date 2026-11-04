@@ -21,10 +21,12 @@ std::array<u8, sizeof(T)> HostBytes(T value)
 
 TEST(Swap, SwapByValue)
 {
+  // swap* converts between the console's byte order and the host's.
   EXPECT_EQ(0xf0, Common::swap8(0xf0));
-  EXPECT_EQ(0x1234, Common::swap16(0x3412));
-  EXPECT_EQ(0x12345678u, Common::swap32(0x78563412));
-  EXPECT_EQ(0x123456789abcdef0ull, Common::swap64(0xf0debc9a78563412ull));
+  EXPECT_EQ(0x1234, Common::swap16(Common::ToBigEndian<u16>(0x1234)));
+  EXPECT_EQ(0x12345678u, Common::swap32(Common::ToBigEndian<u32>(0x12345678)));
+  EXPECT_EQ(0x123456789abcdef0ull, Common::swap64(Common::ToBigEndian<u64>(0x123456789abcdef0)));
+  EXPECT_EQ(HostBytes(Common::swap32(0x01020304)), (std::array<u8, 4>{1, 2, 3, 4}));
 }
 
 TEST(Swap, ByteSwapAlwaysReverses)

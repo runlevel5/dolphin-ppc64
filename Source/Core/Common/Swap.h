@@ -141,23 +141,24 @@ inline void WriteLittleEndian(u8* data, T value)
   std::memcpy(data, &value, sizeof(T));
 }
 
-// Historic names. swap8/16/32/64 reverse bytes, which converts between the console's byte order
-// and a little-endian host's. The overloads on a pointer read a value in the console's byte order.
-inline u8 swap8(u8 data)
+// Historic names. swap8/16/32/64 convert between the console's byte order and the host's, which
+// reverses bytes on a little-endian host and does nothing on a big-endian one. Use bswap* to
+// always reverse bytes. The overloads on a pointer read a value in the console's byte order.
+constexpr u8 swap8(u8 data)
 {
   return data;
 }
-inline u16 swap16(u16 data)
+constexpr u16 swap16(u16 data)
 {
-  return bswap16(data);
+  return FromBigEndian(data);
 }
-inline u32 swap32(u32 data)
+constexpr u32 swap32(u32 data)
 {
-  return bswap32(data);
+  return FromBigEndian(data);
 }
-inline u64 swap64(u64 data)
+constexpr u64 swap64(u64 data)
 {
-  return bswap64(data);
+  return FromBigEndian(data);
 }
 
 inline u32 swap24(const u8* data)
