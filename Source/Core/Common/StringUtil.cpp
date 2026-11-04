@@ -3,6 +3,8 @@
 
 #include "Common/StringUtil.h"
 
+#include "Common/Swap.h"
+
 #include <algorithm>
 #include <array>
 #include <cassert>
