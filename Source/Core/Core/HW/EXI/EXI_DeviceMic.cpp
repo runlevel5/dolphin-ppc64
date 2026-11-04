@@ -11,6 +11,7 @@
 
 #include "AudioCommon/CubebUtils.h"
 #include "Common/BitUtils.h"
+#include "Common/Swap.h"
 #include "Common/CommonTypes.h"
 #include "Common/Logging/Log.h"
 
