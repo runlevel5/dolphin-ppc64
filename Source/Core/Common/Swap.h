@@ -210,12 +210,11 @@ private:
   value_type raw;
 };
 
+// Without a converting constructor, so that it can be a member of an anonymous struct.
 template <typename value_type>
 struct LittleEndianValue
 {
   static_assert(std::is_arithmetic<value_type>(), "value_type must be an arithmetic type");
-  LittleEndianValue() = default;
-  explicit LittleEndianValue(value_type val) { *this = val; }
   operator value_type() const { return FromLittleEndian(raw); }
   LittleEndianValue& operator=(value_type v)
   {

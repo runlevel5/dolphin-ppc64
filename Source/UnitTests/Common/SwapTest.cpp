@@ -65,7 +65,8 @@ TEST(Swap, FixedByteOrderMatchesMemory)
 TEST(Swap, FixedByteOrderValues)
 {
   Common::BigEndianValue<u32> big(0x01020304);
-  Common::LittleEndianValue<u32> little(0x01020304);
+  Common::LittleEndianValue<u32> little;
+  little = 0x01020304;
   EXPECT_EQ(0x01020304u, u32(big));
   EXPECT_EQ(0x01020304u, u32(little));
   EXPECT_EQ(HostBytes(big), (std::array<u8, 4>{1, 2, 3, 4}));
