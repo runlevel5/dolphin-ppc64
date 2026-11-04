@@ -416,7 +416,7 @@ TEST_P(VertexLoaderColorBytesTest, ColorBytes)
   }();
   m_vtx_attr.g0.Color0Elements = c.elements;
 
-  CreateAndCheckSizes(2 * sizeof(float) + c.input.size(), 3 * sizeof(float) + sizeof(u32));
+  CreateAndCheckSizes(2 * sizeof(float) + c.input.size(), 2 * sizeof(float) + sizeof(u32));
 
   Input(1.0f);
   Input(2.0f);
@@ -427,8 +427,7 @@ TEST_P(VertexLoaderColorBytesTest, ColorBytes)
 
   ExpectOut(1.0f);
   ExpectOut(2.0f);
-  ExpectOut(0.0f);
-  ASSERT_EQ(m_loader->m_native_vtx_decl.colors[0].offset, 3 * sizeof(float));
+  ASSERT_EQ(m_loader->m_native_vtx_decl.colors[0].offset, 2 * sizeof(float));
   std::array<u8, 4> actual;
   for (u8& byte : actual)
     byte = m_dst.Read<u8>();
