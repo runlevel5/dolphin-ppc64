@@ -84,7 +84,7 @@ void WiiIPC::DoState(PointerWrap& p)
 
 void WiiIPC::InitState()
 {
-  m_ctrl = CtrlRegister();
+  m_ctrl.hex = 0;
   m_ppc_msg = 0;
   m_arm_msg = 0;
 

@@ -6,6 +6,7 @@
 #include <array>
 #include <memory>
 
+#include "Common/BitField.h"
 #include "Common/CommonTypes.h"
 
 #include "Core/HW/GCMemcard/GCMemcard.h"
@@ -64,24 +65,20 @@ private:
   {
     u32 Hex = 0;
     // DO NOT obey the warning and give this struct a name. Things will fail.
-    struct
-    {
-      // Indentation Meaning:
-      // Channels 0, 1, 2
-      //  Channels 0, 1 only
-      //      Channel 0 only
-      u32 EXIINTMASK : 1;
-      u32 EXIINT : 1;
-      u32 TCINTMASK : 1;
-      u32 TCINT : 1;
-      u32 CLK : 3;
-      u32 CHIP_SELECT : 3;  // CS1 and CS2 are Channel 0 only
-      u32 EXTINTMASK : 1;
-      u32 EXTINT : 1;
-      u32 EXT : 1;     // External Insertion Status (1: External EXI device present)
-      u32 ROMDIS : 1;  // ROM Disable
-      u32 : 18;
-    };
+    // Indentation Meaning:
+    // Channels 0, 1, 2
+    //  Channels 0, 1 only
+    //      Channel 0 only
+    BitField<0, 1, u32> EXIINTMASK;
+    BitField<1, 1, u32> EXIINT;
+    BitField<2, 1, u32> TCINTMASK;
+    BitField<3, 1, u32> TCINT;
+    BitField<4, 3, u32> CLK;
+    BitField<7, 3, u32> CHIP_SELECT;  // CS1 and CS2 are Channel 0 only
+    BitField<10, 1, u32> EXTINTMASK;
+    BitField<11, 1, u32> EXTINT;
+    BitField<12, 1, u32> EXT;     // External Insertion Status (1: External EXI device present)
+    BitField<13, 1, u32> ROMDIS;  // ROM Disable
     UEXI_STATUS() = default;
     explicit UEXI_STATUS(u32 hex) : Hex{hex} {}
   };
@@ -90,14 +87,10 @@ private:
   union UEXI_CONTROL
   {
     u32 Hex = 0;
-    struct
-    {
-      u32 TSTART : 1;
-      u32 DMA : 1;
-      u32 RW : 2;
-      u32 TLEN : 2;
-      u32 : 26;
-    };
+    BitField<0, 1, u32> TSTART;
+    BitField<1, 1, u32> DMA;
+    BitField<2, 2, u32> RW;
+    BitField<4, 2, u32> TLEN;
   };
 
   Core::System& m_system;

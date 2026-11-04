@@ -722,11 +722,8 @@ union TevStageIndirect
   BitField<20, 1, bool, u32> fb_addprev;  // true if the texture coordinate results from the
                                           // previous TEV stage should be added
 
-  struct
-  {
-    u32 hex : 21;
-    u32 unused : 11;
-  };
+  BitField<0, 21, u32> hex;
+  BitField<21, 11, u32> unused;
 
   u32 fullhex;
 

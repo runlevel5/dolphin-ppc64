@@ -81,7 +81,7 @@ void CSIDevice_Keyboard::SendCommand(u32 command, u8 poll)
 {
   UCommand keyboard_command(command);
 
-  if (static_cast<EDirectCommands>(keyboard_command.command) == EDirectCommands::CMD_POLL)
+  if (static_cast<EDirectCommands>(keyboard_command.command.Value()) == EDirectCommands::CMD_POLL)
   {
     m_counter++;
     m_counter &= 15;

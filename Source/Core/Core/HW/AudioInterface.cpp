@@ -220,13 +220,13 @@ void AudioInterfaceManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
         if (ai.m_control.AIINTMSK != tmp_ai_ctrl.AIINTMSK)
         {
           DEBUG_LOG_FMT(AUDIO_INTERFACE, "Change AIINTMSK to {}", tmp_ai_ctrl.AIINTMSK);
-          ai.m_control.AIINTMSK = tmp_ai_ctrl.AIINTMSK;
+          ai.m_control.AIINTMSK = tmp_ai_ctrl.AIINTMSK.Value();
         }
 
         if (ai.m_control.AIINTVLD != tmp_ai_ctrl.AIINTVLD)
         {
           DEBUG_LOG_FMT(AUDIO_INTERFACE, "Change AIINTVLD to {}", tmp_ai_ctrl.AIINTVLD);
-          ai.m_control.AIINTVLD = tmp_ai_ctrl.AIINTVLD;
+          ai.m_control.AIINTVLD = tmp_ai_ctrl.AIINTVLD.Value();
         }
 
         // Set frequency of streaming audio
@@ -251,7 +251,7 @@ void AudioInterfaceManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
         {
           DEBUG_LOG_FMT(AUDIO_INTERFACE, "{} streaming audio",
                         tmp_ai_ctrl.PSTAT ? "start" : "stop");
-          ai.m_control.PSTAT = tmp_ai_ctrl.PSTAT;
+          ai.m_control.PSTAT = tmp_ai_ctrl.PSTAT.Value();
           ai.m_last_cpu_time = core_timing.GetTicks();
 
           core_timing.RemoveEvent(ai.m_event_type_ai);

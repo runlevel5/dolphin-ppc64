@@ -26,6 +26,22 @@
 #define DOLPHIN_HOST_BIG_ENDIAN 0
 #endif
 
+// Declares, in a union with a 32-bit member, an anonymous struct of its two 16-bit halves, in
+// the order that overlays them on the member on this host.
+#if DOLPHIN_HOST_BIG_ENDIAN
+#define DOLPHIN_U32_HALVES(low, high)                                                           \
+  struct                                                                                         \
+  {                                                                                              \
+    u16 high, low;                                                                               \
+  }
+#else
+#define DOLPHIN_U32_HALVES(low, high)                                                           \
+  struct                                                                                         \
+  {                                                                                              \
+    u16 low, high;                                                                               \
+  }
+#endif
+
 using u8 = std::uint8_t;
 using u16 = std::uint16_t;
 using u32 = std::uint32_t;

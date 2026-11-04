@@ -138,8 +138,13 @@ void DSPManager::Reinit(bool hle)
     m_aram.ptr = static_cast<u8*>(Common::AllocateMemoryPages(m_aram.size));
   }
 
-  m_audio_dma = {};
-  m_aram_dma = {};
+  m_audio_dma.current_source_address = 0;
+  m_audio_dma.remaining_blocks_count = 0;
+  m_audio_dma.SourceAddress = 0;
+  m_audio_dma.AudioDMAControl.Hex = 0;
+  m_aram_dma.MMAddr = 0;
+  m_aram_dma.ARAddr = 0;
+  m_aram_dma.Cnt.Hex = 0;
 
   m_dsp_control.Hex = 0;
   m_dsp_control.DSPHalt = 1;
@@ -270,16 +275,16 @@ void DSPManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
         }
 
         // Update DSP related flags
-        dsp.m_dsp_control.DSPReset = tmpControl.DSPReset;
-        dsp.m_dsp_control.DSPAssertInt = tmpControl.DSPAssertInt;
-        dsp.m_dsp_control.DSPHalt = tmpControl.DSPHalt;
-        dsp.m_dsp_control.DSPInitCode = tmpControl.DSPInitCode;
-        dsp.m_dsp_control.DSPInit = tmpControl.DSPInit;
+        dsp.m_dsp_control.DSPReset = tmpControl.DSPReset.Value();
+        dsp.m_dsp_control.DSPAssertInt = tmpControl.DSPAssertInt.Value();
+        dsp.m_dsp_control.DSPHalt = tmpControl.DSPHalt.Value();
+        dsp.m_dsp_control.DSPInitCode = tmpControl.DSPInitCode.Value();
+        dsp.m_dsp_control.DSPInit = tmpControl.DSPInit.Value();
 
         // Interrupt (mask)
-        dsp.m_dsp_control.AID_mask = tmpControl.AID_mask;
-        dsp.m_dsp_control.ARAM_mask = tmpControl.ARAM_mask;
-        dsp.m_dsp_control.DSP_mask = tmpControl.DSP_mask;
+        dsp.m_dsp_control.AID_mask = tmpControl.AID_mask.Value();
+        dsp.m_dsp_control.ARAM_mask = tmpControl.ARAM_mask.Value();
+        dsp.m_dsp_control.DSP_mask = tmpControl.DSP_mask.Value();
 
         // Interrupt
         if (tmpControl.AID)
@@ -290,7 +295,7 @@ void DSPManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
           dsp.m_dsp_control.DSP = 0;
 
         // unknown
-        dsp.m_dsp_control.pad = tmpControl.pad;
+        dsp.m_dsp_control.pad = tmpControl.pad.Value();
         if (dsp.m_dsp_control.pad != 0)
         {
           PanicAlertFmt(
@@ -500,7 +505,7 @@ void DSPManager::Do_ARAM_DMA()
 
         m_aram_dma.MMAddr += 8;
         m_aram_dma.ARAddr += 8;
-        m_aram_dma.Cnt.count -= 8;
+        m_aram_dma.Cnt.count = m_aram_dma.Cnt.count - 8;
       }
     }
     else if (!m_aram.wii_mode)
@@ -516,7 +521,7 @@ void DSPManager::Do_ARAM_DMA()
 
           m_aram_dma.MMAddr += HSP::TRANSFER_SIZE;
           m_aram_dma.ARAddr += HSP::TRANSFER_SIZE;
-          m_aram_dma.Cnt.count -= HSP::TRANSFER_SIZE;
+          m_aram_dma.Cnt.count = m_aram_dma.Cnt.count - HSP::TRANSFER_SIZE;
           mm_ptr += HSP::TRANSFER_SIZE;
         }
       }
@@ -560,7 +565,7 @@ void DSPManager::Do_ARAM_DMA()
 
         m_aram_dma.MMAddr += 8;
         m_aram_dma.ARAddr += 8;
-        m_aram_dma.Cnt.count -= 8;
+        m_aram_dma.Cnt.count = m_aram_dma.Cnt.count - 8;
       }
     }
     else if (!m_aram.wii_mode)
@@ -576,7 +581,7 @@ void DSPManager::Do_ARAM_DMA()
 
           m_aram_dma.MMAddr += HSP::TRANSFER_SIZE;
           m_aram_dma.ARAddr += HSP::TRANSFER_SIZE;
-          m_aram_dma.Cnt.count -= HSP::TRANSFER_SIZE;
+          m_aram_dma.Cnt.count = m_aram_dma.Cnt.count - HSP::TRANSFER_SIZE;
           mm_ptr += HSP::TRANSFER_SIZE;
         }
       }

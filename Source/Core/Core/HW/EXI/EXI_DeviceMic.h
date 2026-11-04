@@ -7,6 +7,7 @@
 #include <mutex>
 
 #include "Common/Buffer.h"
+#include "Common/BitField.h"
 #include "Common/CommonTypes.h"
 #include "Common/WorkQueueThread.h"
 #include "Core/HW/EXI/EXI_Device.h"
@@ -44,17 +45,18 @@ private:
 
   u32 m_position = 0;
   int m_command = 0;
-  struct Status
+  union Status
   {
-    u16 out : 4;          // MICSet/GetOut...???
-    u16 id : 1;           // Used for MICGetDeviceID (always 0)
-    u16 button_unk : 3;   // Button bits which appear unused
-    u16 button : 1;       // The actual button on the mic
-    u16 buff_ovrflw : 1;  // Ring buffer wrote over bytes which weren't read by console
-    u16 gain : 1;         // Gain: 0dB or 15dB
-    u16 sample_rate : 2;  // Sample rate, 00-11025, 01-22050, 10-44100, 11-??
-    u16 buff_size : 2;    // Ring buffer size in bytes, 00-32, 01-64, 10-128, 11-???
-    u16 is_active : 1;    // If we are sampling or not
+    u16 hex = 0;
+    BitField<0, 4, u16> out;           // MICSet/GetOut...???
+    BitField<4, 1, u16> id;            // Used for MICGetDeviceID (always 0)
+    BitField<5, 3, u16> button_unk;    // Button bits which appear unused
+    BitField<8, 1, u16> button;        // The actual button on the mic
+    BitField<9, 1, u16> buff_ovrflw;   // Ring buffer wrote over bytes which weren't read by console
+    BitField<10, 1, u16> gain;         // Gain: 0dB or 15dB
+    BitField<11, 2, u16> sample_rate;  // Sample rate, 00-11025, 01-22050, 10-44100, 11-??
+    BitField<13, 2, u16> buff_size;    // Ring buffer size in bytes, 00-32, 01-64, 10-128, 11-???
+    BitField<15, 1, u16> is_active;    // If we are sampling or not
   };
 
   static long DataCallback(cubeb_stream* stream, void* user_data, const void* input_buffer,

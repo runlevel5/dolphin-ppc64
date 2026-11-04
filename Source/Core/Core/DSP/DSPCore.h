@@ -250,6 +250,42 @@ struct DSP_Regs
   u16 cr;
   u16 sr;
 
+  // The parts of each value are declared from the least significant on a little-endian host and
+  // from the most significant on a big-endian one, so that they overlay val on either.
+#if DOLPHIN_HOST_BIG_ENDIAN
+  union
+  {
+    u64 val;
+    struct
+    {
+      u16 m2;  // if this gets in the way, drop it.
+      u16 h;
+      u16 m;
+      u16 l;
+    };
+  } prod;
+
+  union
+  {
+    u32 val;
+    struct
+    {
+      u16 h;
+      u16 l;
+    };
+  } ax[2];
+
+  union
+  {
+    u64 val;
+    struct
+    {
+      u32 h;  // 32 bits so that val is fully sign-extended (only 8 bits are actually used)
+      u16 m;
+      u16 l;
+    };
+  } ac[2];
+#else
   union
   {
     u64 val;
@@ -282,6 +318,7 @@ struct DSP_Regs
       u32 h;  // 32 bits so that val is fully sign-extended (only 8 bits are actually used)
     };
   } ac[2];
+#endif
 };
 
 struct DSPInitOptions

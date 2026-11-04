@@ -5,6 +5,7 @@
 
 #include <memory>
 
+#include "Common/BitField.h"
 #include "Common/CommonTypes.h"
 
 class PointerWrap;
@@ -43,28 +44,25 @@ constexpr u16 DSP_CONTROL_MASK = 0x0C07;
 union UDSPControl
 {
   u16 Hex;
-  struct
-  {
-    // DSP Control
-    u16 DSPReset : 1;  // Write 1 to reset and waits for 0
-    u16 DSPAssertInt : 1;
-    u16 DSPHalt : 1;
-    // Interrupt for DMA to the AI/speakers
-    u16 AID : 1;
-    u16 AID_mask : 1;
-    // ARAM DMA interrupt
-    u16 ARAM : 1;
-    u16 ARAM_mask : 1;
-    // DSP DMA interrupt
-    u16 DSP : 1;
-    u16 DSP_mask : 1;
-    // Other ???
-    u16 DMAState : 1;     // DSPGetDMAStatus() uses this flag. __ARWaitForDMA() uses it too...maybe
-                          // it's just general DMA flag
-    u16 DSPInitCode : 1;  // Indicator that the DSP was initialized?
-    u16 DSPInit : 1;      // DSPInit() writes to this flag
-    u16 pad : 4;
-  };
+  // DSP Control
+  BitField<0, 1, u16> DSPReset;  // Write 1 to reset and waits for 0
+  BitField<1, 1, u16> DSPAssertInt;
+  BitField<2, 1, u16> DSPHalt;
+  // Interrupt for DMA to the AI/speakers
+  BitField<3, 1, u16> AID;
+  BitField<4, 1, u16> AID_mask;
+  // ARAM DMA interrupt
+  BitField<5, 1, u16> ARAM;
+  BitField<6, 1, u16> ARAM_mask;
+  // DSP DMA interrupt
+  BitField<7, 1, u16> DSP;
+  BitField<8, 1, u16> DSP_mask;
+  // Other ???
+  BitField<9, 1, u16> DMAState;     // DSPGetDMAStatus() uses this flag. __ARWaitForDMA() uses it too...maybe
+                        // it's just general DMA flag
+  BitField<10, 1, u16> DSPInitCode;  // Indicator that the DSP was initialized?
+  BitField<11, 1, u16> DSPInit;      // DSPInit() writes to this flag
+  BitField<12, 4, u16> pad;
   UDSPControl(u16 hex = 0) : Hex(hex) {}
 };
 
@@ -114,22 +112,16 @@ private:
   union UARAMCount
   {
     u32 Hex = 0;
-    struct
-    {
-      u32 count : 31;
-      u32 dir : 1;  // 0: MRAM -> ARAM 1: ARAM -> MRAM
-    };
+    BitField<0, 31, u32> count;
+    BitField<31, 1, u32> dir;  // 0: MRAM -> ARAM 1: ARAM -> MRAM
   };
 
   // Blocks are 32 bytes.
   union UAudioDMAControl
   {
     u16 Hex = 0;
-    struct
-    {
-      u16 NumBlocks : 15;
-      u16 Enable : 1;
-    };
+    BitField<0, 15, u16> NumBlocks;
+    BitField<15, 1, u16> Enable;
   };
 
   // AudioDMA
@@ -161,12 +153,8 @@ private:
   union ARAM_Info
   {
     u16 Hex = 0;
-    struct
-    {
-      u16 size : 6;
-      u16 unk : 1;
-      u16 : 9;
-    };
+    BitField<0, 6, u16> size;
+    BitField<6, 1, u16> unk;
   };
 
   ARAMInfo m_aram;

@@ -12,6 +12,7 @@
 
 #include "Common/Assert.h"
 #include "Common/CommonTypes.h"
+#include "Common/Swap.h"
 #include "Core/HW/GPFifo.h"
 #include "Core/HW/MMIOHandlers.h"
 
@@ -83,7 +84,7 @@ namespace Utils
 // Allow grabbing pointers to the high and low part of a 32 bits pointer.
 inline u16* LowPart(u32* ptr)
 {
-  return (u16*)ptr;
+  return reinterpret_cast<u16*>(ptr) + (Common::kHostBigEndian ? 1 : 0);
 }
 inline u16* LowPart(std::atomic<u32>* ptr)
 {
@@ -92,7 +93,7 @@ inline u16* LowPart(std::atomic<u32>* ptr)
 }
 inline u16* HighPart(u32* ptr)
 {
-  return LowPart(ptr) + 1;
+  return reinterpret_cast<u16*>(ptr) + (Common::kHostBigEndian ? 0 : 1);
 }
 inline u16* HighPart(std::atomic<u32>* ptr)
 {
