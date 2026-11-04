@@ -129,8 +129,8 @@ void JitPPC64::psq_lXX(UGeckoInstruction inst)
 
   const bool indexed = inst.OPCD == 4;
   const bool update = inst.OPCD == 57 || (indexed && (inst.SUBOP6 & 32));
-  const u32 i = indexed ? inst.Ix : inst.I;
-  const bool single = indexed ? inst.Wx : inst.W;
+  const u32 i = indexed ? inst.Ix.Value() : inst.I.Value();
+  const bool single = indexed ? inst.Wx.Value() : inst.W.Value();
   // The invalid form is left to the interpreter.
   FALLBACK_IF(update && inst.RA == 0);
 
@@ -380,8 +380,8 @@ void JitPPC64::psq_stXX(UGeckoInstruction inst)
 
   const bool indexed = inst.OPCD == 4;
   const bool update = inst.OPCD == 61 || (indexed && (inst.SUBOP6 & 32));
-  const u32 i = indexed ? inst.Ix : inst.I;
-  const bool single = indexed ? inst.Wx : inst.W;
+  const u32 i = indexed ? inst.Ix.Value() : inst.I.Value();
+  const bool single = indexed ? inst.Wx.Value() : inst.W.Value();
   // The invalid form is left to the interpreter.
   FALLBACK_IF(update && inst.RA == 0);
 

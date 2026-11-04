@@ -32,6 +32,7 @@
 
 #include <fmt/format.h>
 
+#include "Common/BitField.h"
 #include "Common/CommonTypes.h"
 #include "Common/IniFile.h"
 #include "Common/Logging/Log.h"
@@ -97,13 +98,10 @@ struct ARAddr
   union
   {
     u32 address;
-    struct
-    {
-      u32 gcaddr : 25;
-      u32 size : 2;
-      u32 type : 3;
-      u32 subtype : 2;
-    };
+    BitField<0, 25, u32> gcaddr;
+    BitField<25, 2, u32> size;
+    BitField<27, 3, u32> type;
+    BitField<30, 2, u32> subtype;
   };
 
   ARAddr(const u32 addr) : address(addr) {}

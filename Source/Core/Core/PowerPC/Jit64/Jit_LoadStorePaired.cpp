@@ -30,8 +30,8 @@ void Jit64::psq_stXX(UGeckoInstruction inst)
   int a = inst.RA;
   int b = indexed ? inst.RB : a;
   int s = inst.FS;
-  int i = indexed ? inst.Ix : inst.I;
-  int w = indexed ? inst.Wx : inst.W;
+  int i = indexed ? inst.Ix.Value() : inst.I.Value();
+  int w = indexed ? inst.Wx.Value() : inst.W.Value();
   FALLBACK_IF(!a);
 
   FlushRegistersBeforeSlowAccess();
@@ -121,8 +121,8 @@ void Jit64::psq_lXX(UGeckoInstruction inst)
   int a = inst.RA;
   int b = indexed ? inst.RB : a;
   int s = inst.FS;
-  int i = indexed ? inst.Ix : inst.I;
-  int w = indexed ? inst.Wx : inst.W;
+  int i = indexed ? inst.Ix.Value() : inst.I.Value();
+  int w = indexed ? inst.Wx.Value() : inst.W.Value();
   FALLBACK_IF(!a);
 
   FlushRegistersBeforeSlowAccess();

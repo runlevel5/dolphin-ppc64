@@ -158,8 +158,11 @@ private:
 
   constexpr T Value(std::true_type) const
   {
+    // The cast after the left shift matters for storage narrower than int, which integer
+    // promotion would otherwise widen before the sign-extending right shift.
     const size_t shift_amount = 8 * sizeof(StorageType) - bits;
-    return static_cast<T>((storage << (shift_amount - position)) >> shift_amount);
+    return static_cast<T>(static_cast<StorageType>(storage << (shift_amount - position)) >>
+                          shift_amount);
   }
 
   constexpr T Value(std::false_type) const
