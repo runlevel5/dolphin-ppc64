@@ -11,6 +11,7 @@
 
 #include "Common/CommonTypes.h"
 #include "Common/Hash.h"
+#include "Common/Swap.h"
 
 namespace
 {
@@ -73,12 +74,10 @@ U128 Fold(U128 a, U128 b)
   return {low.lo ^ high.lo ^ b.lo, low.hi ^ high.hi ^ b.hi};
 }
 
+// The doublewords are little-endian integers on either host.
 U128 Block(const u8* data)
 {
-  U128 block;
-  std::memcpy(&block.lo, data, 8);
-  std::memcpy(&block.hi, data + 8, 8);
-  return block;
+  return {Common::ReadLittleEndian<u64>(data), Common::ReadLittleEndian<u64>(data + 8)};
 }
 
 u64 Mix(u64 k)
