@@ -6,6 +6,7 @@
 #include <hidapi.h>
 
 #include "Common/CommonTypes.h"
+#include "Common/Swap.h"
 #include "Common/Logging/Log.h"
 #include "Common/MathUtil.h"
 #include "InputCommon/ControllerInterface/ControllerInterface.h"
@@ -14,6 +15,7 @@ namespace ciface::SteamDeck
 {
 constexpr std::string_view STEAMDECK_SOURCE_NAME = "SteamDeck";
 
+// The report's fields are little-endian.
 struct DeckInputReport
 {
   // +0
@@ -22,45 +24,45 @@ struct DeckInputReport
   u8 report_type;
   u8 report_sz;
 
-  u32 frame;
+  Common::LittleEndianValue<u32> frame;
 
   // +8
-  u32 buttons0;
-  u32 buttons1;
+  Common::LittleEndianValue<u32> buttons0;
+  Common::LittleEndianValue<u32> buttons1;
 
   // +16
-  s16 l_pad_x;
-  s16 l_pad_y;
-  s16 r_pad_x;
-  s16 r_pad_y;
+  Common::LittleEndianValue<s16> l_pad_x;
+  Common::LittleEndianValue<s16> l_pad_y;
+  Common::LittleEndianValue<s16> r_pad_x;
+  Common::LittleEndianValue<s16> r_pad_y;
 
   // +24
-  s16 accel_x;
-  s16 accel_y;
-  s16 accel_z;
-  s16 gyro_pitch;
-  s16 gyro_roll;
-  s16 gyro_yaw;
-  s16 pose_quat_w;
-  s16 pose_quat_x;
-  s16 pose_quat_y;
-  s16 pose_quat_z;
+  Common::LittleEndianValue<s16> accel_x;
+  Common::LittleEndianValue<s16> accel_y;
+  Common::LittleEndianValue<s16> accel_z;
+  Common::LittleEndianValue<s16> gyro_pitch;
+  Common::LittleEndianValue<s16> gyro_roll;
+  Common::LittleEndianValue<s16> gyro_yaw;
+  Common::LittleEndianValue<s16> pose_quat_w;
+  Common::LittleEndianValue<s16> pose_quat_x;
+  Common::LittleEndianValue<s16> pose_quat_y;
+  Common::LittleEndianValue<s16> pose_quat_z;
 
   // +44
-  u16 l_trig;
-  u16 r_trig;
+  Common::LittleEndianValue<u16> l_trig;
+  Common::LittleEndianValue<u16> r_trig;
 
   // +48
-  s16 l_stick_x;
-  s16 l_stick_y;
-  s16 r_stick_x;
-  s16 r_stick_y;
+  Common::LittleEndianValue<s16> l_stick_x;
+  Common::LittleEndianValue<s16> l_stick_y;
+  Common::LittleEndianValue<s16> r_stick_x;
+  Common::LittleEndianValue<s16> r_stick_y;
 
   // +56
-  u16 l_pad_force;
-  u16 r_pad_force;
-  s16 l_stick_capa;
-  s16 r_stick_capa;
+  Common::LittleEndianValue<u16> l_pad_force;
+  Common::LittleEndianValue<u16> r_pad_force;
+  Common::LittleEndianValue<s16> l_stick_capa;
+  Common::LittleEndianValue<s16> r_stick_capa;
 };
 static_assert(sizeof(DeckInputReport) == 64);
 

@@ -644,7 +644,8 @@ std::string GameFile::GetNetPlayName(const Core::TitleDatabase& title_database) 
 
 static Common::SHA1::Digest GetHash(u32 value)
 {
-  auto data = Common::BitCastToArray<u8>(value);
+  // Hosts of either byte order must agree on the hash.
+  auto data = Common::BitCastToArray<u8>(Common::ToLittleEndian(value));
   return Common::SHA1::CalculateDigest(data);
 }
 
