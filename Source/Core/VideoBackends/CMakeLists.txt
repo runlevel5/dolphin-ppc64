@@ -1,6 +1,9 @@
 add_subdirectory(OGL)
 add_subdirectory(Null)
-add_subdirectory(Software)
+if(NOT DOLPHIN_BIG_ENDIAN)
+  # The software renderer packs pixels as little-endian words.
+  add_subdirectory(Software)
+endif()
 
 if(WIN32)
   add_subdirectory(D3DCommon)

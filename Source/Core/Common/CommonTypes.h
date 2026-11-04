@@ -18,6 +18,14 @@
 #define LONG int
 #endif
 
+// Host byte order, for the few places that need it in the preprocessor (struct layout, source
+// selection). Everywhere else, use Common::kHostBigEndian from Common/Swap.h.
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define DOLPHIN_HOST_BIG_ENDIAN 1
+#else
+#define DOLPHIN_HOST_BIG_ENDIAN 0
+#endif
+
 using u8 = std::uint8_t;
 using u16 = std::uint16_t;
 using u32 = std::uint32_t;

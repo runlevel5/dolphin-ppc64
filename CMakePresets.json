@@ -57,6 +57,18 @@
       },
       "hidden": true
     },
+    {
+      "name": "ppc64-common",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ENABLE_TESTS": "ON",
+        "USE_SYSTEM_LIBLZMA": "ON",
+        "USE_DISCORD_PRESENCE": "OFF",
+        "USE_MGBA": "OFF",
+        "PPC64_CPU": "power9"
+      },
+      "hidden": true
+    },
 
     {
       "name": "release-generic",
@@ -200,6 +212,36 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-ppc64-nogui",
+      "displayName": "Configure: RelWithDebInfo - Ninja - ppc64 NoGUI",
+      "inherits": ["ppc64-common", "ninja-generator"],
+      "binaryDir": "${sourceDir}/build/ppc64-nogui",
+      "cacheVariables": {
+        "ENABLE_QT": "OFF",
+        "ENABLE_NOGUI": "ON"
+      },
+      "condition": {
+        "type": "matches",
+        "string": "${hostSystemName}",
+        "regex": "Linux"
+      }
+    },
+    {
+      "name": "linux-ppc64-qt",
+      "displayName": "Configure: RelWithDebInfo - Ninja - ppc64 Qt",
+      "inherits": ["ppc64-common", "ninja-generator"],
+      "binaryDir": "${sourceDir}/build/ppc64-qt",
+      "cacheVariables": {
+        "ENABLE_QT": "ON",
+        "ENABLE_NOGUI": "ON"
+      },
+      "condition": {
+        "type": "matches",
+        "string": "${hostSystemName}",
+        "regex": "Linux"
       }
     },
     {

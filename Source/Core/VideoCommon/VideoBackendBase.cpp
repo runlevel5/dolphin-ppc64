@@ -33,7 +33,9 @@
 #include "VideoBackends/Null/VideoBackend.h"
 #ifdef HAS_OPENGL
 #include "VideoBackends/OGL/VideoBackend.h"
+#if !DOLPHIN_HOST_BIG_ENDIAN
 #include "VideoBackends/Software/VideoBackend.h"
+#endif
 #endif
 #ifdef HAS_VULKAN
 #include "VideoBackends/Vulkan/VideoBackend.h"
@@ -223,7 +225,7 @@ const std::vector<std::unique_ptr<VideoBackendBase>>& VideoBackendBase::GetAvail
 #ifdef __APPLE__
     backends.emplace(backends.begin(), std::make_unique<Metal::VideoBackend>());
 #endif
-#ifdef HAS_OPENGL
+#if defined(HAS_OPENGL) && !DOLPHIN_HOST_BIG_ENDIAN
     backends.push_back(std::make_unique<SW::VideoSoftware>());
 #endif
     backends.push_back(std::make_unique<Null::VideoBackend>());
