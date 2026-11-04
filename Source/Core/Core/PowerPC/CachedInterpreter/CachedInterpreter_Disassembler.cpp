@@ -37,7 +37,7 @@ template <bool write_pc>
 s32 CachedInterpreter::Interpret(std::ostream& stream, const InterpretOperands& operands)
 {
   fmt::println(stream, "Interpret<write_pc={:5}>(current_pc=0x{:08x}, inst=0x{:08x})", write_pc,
-               operands.current_pc, operands.inst.hex);
+               operands.current_pc, operands.inst);
   return sizeof(AnyCallback) + sizeof(operands);
 }
 
@@ -48,7 +48,7 @@ s32 CachedInterpreter::InterpretAndCheckExceptions(
   fmt::println(stream,
                "InterpretAndCheckExceptions<write_pc={:5}>(current_pc=0x{:08x}, inst=0x{:08x}, "
                "downcount={})",
-               write_pc, operands.current_pc, operands.inst.hex, operands.downcount);
+               write_pc, operands.current_pc, operands.inst, operands.downcount);
   return sizeof(AnyCallback) + sizeof(operands);
 }
 
