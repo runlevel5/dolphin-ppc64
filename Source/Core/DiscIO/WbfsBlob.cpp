@@ -95,7 +95,7 @@ bool WbfsFileReader::ReadHeader()
   // Read hd size info
   m_files[0].file.Seek(0, File::SeekOrigin::Begin);
   m_files[0].file.Read(Common::AsWritableU8Span(m_header));
-  if (m_header.magic != WBFS_MAGIC)
+  if (Common::FromLittleEndian(m_header.magic) != WBFS_MAGIC)
     return false;
 
   m_header.hd_sector_count = Common::swap32(m_header.hd_sector_count);

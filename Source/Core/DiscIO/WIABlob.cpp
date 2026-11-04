@@ -97,7 +97,8 @@ bool WIARVZFileReader<RVZ>::Initialize(const std::string& path)
     return false;
   }
 
-  if ((!RVZ && m_header_1.magic != WIA_MAGIC) || (RVZ && m_header_1.magic != RVZ_MAGIC))
+  const u32 magic = Common::FromLittleEndian(m_header_1.magic);
+  if ((!RVZ && magic != WIA_MAGIC) || (RVZ && magic != RVZ_MAGIC))
     return false;
 
   const u32 version = RVZ ? RVZ_VERSION : WIA_VERSION;
@@ -2016,7 +2017,7 @@ WIARVZFileReader<RVZ>::Convert(BlobReader* infile, const VolumeDisc* infile_volu
   header_2.group_entries_offset = Common::swap64(group_entries_offset);
   header_2.group_entries_size = Common::swap32(static_cast<u32>(compressed_group_entries->size()));
 
-  header_1.magic = RVZ ? RVZ_MAGIC : WIA_MAGIC;
+  header_1.magic = Common::ToLittleEndian(RVZ ? RVZ_MAGIC : WIA_MAGIC);
   header_1.version = Common::swap32(RVZ ? RVZ_VERSION : WIA_VERSION);
   header_1.version_compatible =
       Common::swap32(RVZ ? RVZ_VERSION_WRITE_COMPATIBLE : WIA_VERSION_WRITE_COMPATIBLE);

@@ -187,7 +187,7 @@ LZMADecompressor::LZMADecompressor(bool lzma2, const u8* filter_options, size_t 
   {
     // The dictionary size is stored as a 32-bit little endian unsigned integer
     static_assert(sizeof(m_options.dict_size) == sizeof(u32));
-    std::memcpy(&m_options.dict_size, filter_options + 1, sizeof(u32));
+    m_options.dict_size = Common::ReadLittleEndian<u32>(filter_options + 1);
 
     const u8 d = filter_options[0];
     if (d >= (9 * 5 * 5))
@@ -636,7 +636,7 @@ LZMACompressor::LZMACompressor(bool lzma2, int compression_level, u8 compressor_
 
       // The dictionary size is stored as a 32-bit little endian unsigned integer
       static_assert(sizeof(m_options.dict_size) == sizeof(u32));
-      std::memcpy(compressor_data_out + 1, &m_options.dict_size, sizeof(u32));
+      Common::WriteLittleEndian<u32>(compressor_data_out + 1, m_options.dict_size);
     }
   }
   else

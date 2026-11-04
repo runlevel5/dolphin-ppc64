@@ -32,6 +32,7 @@
 // Modified for Dolphin.
 
 #include "Common/SDCardUtil.h"
+#include "Common/Swap.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -64,9 +65,11 @@ static u8 s_boot_sector[BYTES_PER_SECTOR];   /* Boot sector */
 static u8 s_fsinfo_sector[BYTES_PER_SECTOR]; /* FS Info sector */
 static u8 s_fat_head[BYTES_PER_SECTOR];      /* First FAT sector */
 
+// FAT's fields are little-endian.
 template <typename T>
 static void WriteData(u8* out, T data)
 {
+  data = Common::ToLittleEndian(data);
   std::memcpy(out, &data, sizeof(data));
 }
 
