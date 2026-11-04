@@ -15,6 +15,7 @@
 #include "VideoCommon/FramebufferManager.h"
 #include "VideoCommon/PixelEngine.h"
 #include "VideoCommon/Statistics.h"
+#include "VideoCommon/TextureDecoder_Util.h"
 #include "VideoCommon/VideoBackendBase.h"
 #include "VideoCommon/VideoCommon.h"
 #include "VideoCommon/VideoConfig.h"
@@ -42,8 +43,9 @@ u32 HardwareEFBInterface::PeekColorInternal(FramebufferManager* framebuffer_mana
         return framebuffer_manager->PeekEFBColor(x, y);
       });
 
-  // a little-endian value is expected to be returned
-  color = ((color & 0xFF00FF00) | ((color >> 16) & 0xFF) | ((color << 16) & 0xFF0000));
+  // The texel is R, G, B, A bytes; the console expects an ARGB word.
+  const auto [r, g, b, a] = UnpackRGBA(color);
+  color = (static_cast<u32>(a) << 24) | (r << 16) | (g << 8) | b;
 
   if (bpmem.zcontrol.pixel_format == PixelFormat::RGBA6_Z24)
   {
@@ -136,10 +138,10 @@ void HardwareEFBInterface::PokeColor(FramebufferManager* framebuffer_manager, u1
   if (ShouldSkipAccess(x, y))
     return;
 
-  // Convert to expected format (BGRA->RGBA)
+  // The console gives an ARGB word; the backends take R, G, B, A bytes.
   // TODO: Check alpha, depending on mode?
-  const u32 color =
-      ((poke_data & 0xFF00FF00) | ((poke_data >> 16) & 0xFF) | ((poke_data << 16) & 0xFF0000));
+  const u32 color = MakeRGBA((poke_data >> 16) & 0xFF, (poke_data >> 8) & 0xFF, poke_data & 0xFF,
+                             (poke_data >> 24) & 0xFF);
 
   AsyncRequests::GetInstance()->PushEvent([x, y, color, framebuffer_manager = framebuffer_manager] {
     INCSTAT(g_stats.this_frame.num_efb_pokes);

@@ -10,6 +10,8 @@
 #include "Common/MsgHandler.h"
 #include "Common/Swap.h"
 
+#include "VideoCommon/LookUpTables.h"
+#include "VideoCommon/TextureDecoder_Util.h"
 #include "VideoCommon/VertexLoader.h"
 #include "VideoCommon/VertexLoaderManager.h"
 #include "VideoCommon/VertexLoaderUtils.h"
@@ -21,7 +23,9 @@ void Color_Read_Dummy(VertexLoader* loader)
   loader->m_colIndex++;
 }
 
-constexpr u32 alpha_mask = 0xFF000000;
+// Colors are written as their R, G, B and A bytes, which Read32 and Read24 take from the vertex
+// as they are.
+constexpr u32 alpha_mask = RGBA_OPAQUE_ALPHA;
 
 void SetCol(VertexLoader* loader, u32 val)
 {
@@ -29,42 +33,28 @@ void SetCol(VertexLoader* loader, u32 val)
   loader->m_colIndex++;
 }
 
-// Color comes in format BARG in 16 bits
-// BARG -> AABBGGRR
+// Color comes in format RGBA, 4 bits each, as the two bytes of the vertex were read into val_
 void SetCol4444(VertexLoader* loader, u16 val_)
 {
-  u32 col, val = val_;
-  col = val & 0x00F0;           // col  = 000000R0;
-  col |= (val & 0x000F) << 12;  // col |= 0000G000;
-  col |= (val & 0xF000) << 8;   // col |= 00B00000;
-  col |= (val & 0x0F00) << 20;  // col |= A0000000;
-  col |= col >> 4;              // col  = A0B0G0R0 | 0A0B0G0R;
-  SetCol(loader, col);
+  const u16 val = Common::FromBigEndian(val_);
+  SetCol(loader, MakeRGBA(Convert4To8((val >> 12) & 0xF), Convert4To8((val >> 8) & 0xF),
+                          Convert4To8((val >> 4) & 0xF), Convert4To8(val & 0xF)));
 }
 
 // Color comes in format RGBA
 // RRRRRRGG GGGGBBBB BBAAAAAA
 void SetCol6666(VertexLoader* loader, u32 val)
 {
-  u32 col = (val >> 16) & 0x000000FC;
-  col |= (val >> 2) & 0x0000FC00;
-  col |= (val << 12) & 0x00FC0000;
-  col |= (val << 26) & 0xFC000000;
-  col |= (col >> 6) & 0x03030303;
-  SetCol(loader, col);
+  SetCol(loader, MakeRGBA(Convert6To8((val >> 18) & 0x3F), Convert6To8((val >> 12) & 0x3F),
+                          Convert6To8((val >> 6) & 0x3F), Convert6To8(val & 0x3F)));
 }
 
 // Color comes in RGB
 // RRRRRGGG GGGBBBBB
-void SetCol565(VertexLoader* loader, u16 val_)
+void SetCol565(VertexLoader* loader, u16 val)
 {
-  u32 col, val = val_;
-  col = (val >> 8) & 0x0000F8;
-  col |= (val << 5) & 0x00FC00;
-  col |= (val << 19) & 0xF80000;
-  col |= (col >> 5) & 0x070007;
-  col |= (col >> 6) & 0x000300;
-  SetCol(loader, col | alpha_mask);
+  SetCol(loader, MakeRGBA(Convert5To8((val >> 11) & 0x1F), Convert6To8((val >> 5) & 0x3F),
+                          Convert5To8(val & 0x1F), 0xFF));
 }
 
 u32 Read32(const u8* addr)

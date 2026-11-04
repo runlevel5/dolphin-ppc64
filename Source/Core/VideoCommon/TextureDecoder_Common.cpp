@@ -315,7 +315,7 @@ static inline u32 DecodePixel_IA8(u16 val)
 {
   int a = val & 0xFF;
   int i = val >> 8;
-  return i | (i << 8) | (i << 16) | (a << 24);
+  return MakeRGBA(i, i, i, a);
 }
 
 static inline u32 DecodePixel_RGB565(u16 val)
@@ -325,7 +325,7 @@ static inline u32 DecodePixel_RGB565(u16 val)
   g = Convert6To8((val >> 5) & 0x3f);
   b = Convert5To8((val) & 0x1f);
   a = 0xFF;
-  return r | (g << 8) | (b << 16) | (a << 24);
+  return MakeRGBA(r, g, b, a);
 }
 
 static inline u32 DecodePixel_RGB5A3(u16 val)
@@ -345,7 +345,7 @@ static inline u32 DecodePixel_RGB5A3(u16 val)
     g = Convert4To8((val >> 4) & 0xf);
     b = Convert4To8((val) & 0xf);
   }
-  return r | (g << 8) | (b << 16) | (a << 24);
+  return MakeRGBA(r, g, b, a);
 }
 
 static inline u32 DecodePixel_Paletted(u16 pixel, TLUTFormat tlutfmt)

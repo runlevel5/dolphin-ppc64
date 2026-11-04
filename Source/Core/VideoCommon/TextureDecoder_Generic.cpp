@@ -24,7 +24,7 @@ static inline u32 DecodePixel_IA8(u16 val)
 {
   int a = val & 0xFF;
   int i = val >> 8;
-  return i | (i << 8) | (i << 16) | (a << 24);
+  return MakeRGBA(i, i, i, a);
 }
 
 static inline u32 DecodePixel_RGB565(u16 val)
@@ -34,7 +34,7 @@ static inline u32 DecodePixel_RGB565(u16 val)
   g = Convert6To8((val >> 5) & 0x3f);
   b = Convert5To8((val) & 0x1f);
   a = 0xFF;
-  return r | (g << 8) | (b << 16) | (a << 24);
+  return MakeRGBA(r, g, b, a);
 }
 
 static inline u32 DecodePixel_RGB5A3(u16 val)
@@ -54,7 +54,7 @@ static inline u32 DecodePixel_RGB5A3(u16 val)
     g = Convert4To8((val >> 4) & 0xf);
     b = Convert4To8((val) & 0xf);
   }
-  return r | (g << 8) | (b << 16) | (a << 24);
+  return MakeRGBA(r, g, b, a);
 }
 
 static inline u32 DecodePixel_Paletted(u16 pixel, TLUTFormat tlutfmt)
@@ -110,7 +110,7 @@ static inline void DecodeBytes_IA4(u32* dst, const u8* src)
     const u8 val = src[x];
     u8 a = Convert4To8(val >> 4);
     u8 l = Convert4To8(val & 0xF);
-    dst[x] = (a << 24) | l << 16 | l << 8 | l;
+    dst[x] = MakeRGBA(l, l, l, a);
   }
 }
 
@@ -122,8 +122,11 @@ static inline void DecodeBytes_RGB5A3(u32* dst, const u16* src)
 
 static inline void DecodeBytes_RGBA8(u32* dst, const u16* src, const u16* src2)
 {
+  // The first group of bytes holds A and R of each pixel, the second G and B.
+  const u8* ar = reinterpret_cast<const u8*>(src);
+  const u8* gb = reinterpret_cast<const u8*>(src2);
   for (int x = 0; x < 4; x++)
-    dst[x] = ((src[x] & 0xFF) << 24) | ((src[x] & 0xFF00) >> 8) | (src2[x] << 8);
+    dst[x] = MakeRGBA(ar[2 * x + 1], gb[2 * x], gb[2 * x + 1], ar[2 * x]);
 }
 
 static void DecodeDXTBlock(u32* dst, const DXTBlock* src, int pitch)
