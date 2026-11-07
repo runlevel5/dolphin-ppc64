@@ -713,6 +713,7 @@ PUBLIC
   sfml-network
   videonull
   videoogl
+  videosoftware
 
 PRIVATE
   FatFs
@@ -721,10 +722,6 @@ PRIVATE
   LZ4::LZ4
   ZLIB::ZLIB
 )
-
-if(NOT DOLPHIN_BIG_ENDIAN)
-  target_link_libraries(core PUBLIC videosoftware)
-endif()
 
 if(LIBUDEV_FOUND)
   target_include_directories(core PRIVATE ${LIBUDEV_INCLUDE_DIR})

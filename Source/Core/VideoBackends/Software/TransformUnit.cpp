@@ -326,7 +326,7 @@ void TransformColor(const InputVertexData* src, OutputVertexData* dst)
     if (colorchan.matsource == MatSource::Vertex)
       matcolor = src->color[chan];
     else
-      std::memcpy(matcolor.data(), &xfmem.matColor[chan], sizeof(u32));
+      Common::WriteLittleEndian<u32>(matcolor.data(), xfmem.matColor[chan]);  // A, B, G, R bytes
 
     if (colorchan.enablelighting)
     {
@@ -339,7 +339,8 @@ void TransformColor(const InputVertexData* src, OutputVertexData* dst)
       }
       else
       {
-        const u8* ambColor = reinterpret_cast<u8*>(&xfmem.ambColor[chan]);
+        std::array<u8, 4> ambColor;  // A, B, G, R bytes
+        Common::WriteLittleEndian<u32>(ambColor.data(), xfmem.ambColor[chan]);
         lightCol.x = ambColor[1];
         lightCol.y = ambColor[2];
         lightCol.z = ambColor[3];
@@ -395,8 +396,7 @@ void TransformColor(const InputVertexData* src, OutputVertexData* dst)
     }
 
     // abgr -> rgba
-    const u32 rgba_color = Common::swap32(chancolor.data());
-    std::memcpy(dst->color[chan].data(), &rgba_color, sizeof(u32));
+    dst->color[chan] = {chancolor[3], chancolor[2], chancolor[1], chancolor[0]};
   }
 }
 

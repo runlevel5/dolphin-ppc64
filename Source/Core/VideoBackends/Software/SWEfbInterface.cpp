@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Common/CommonTypes.h"
+#include "Common/Swap.h"
 #include "Common/Logging/Log.h"
 
 #include "Core/Config/GraphicsSettings.h"
@@ -37,6 +38,29 @@ static inline u32 GetDepthOffset(u16 x, u16 y)
   return (x + y * EFB_WIDTH) * 3 + depth_buffer_start;
 }
 
+// A color is the bytes A, B, G, R, which are the little-endian bytes of the word R, G, B, A.
+static u32 ColorToU32(const u8* color)
+{
+  return Common::ReadLittleEndian<u32>(color);
+}
+
+static void U32ToColor(u8* color, u32 value)
+{
+  Common::WriteLittleEndian<u32>(color, value);
+}
+
+// The EFB's three-byte cells are the low three bytes of a little-endian word, whose top byte is
+// the next cell's first byte and is kept as it is.
+static u32 ReadEfbCell(u32 offset)
+{
+  return Common::ReadLittleEndian<u32>(&efb[offset]);
+}
+
+static void WriteEfbCell(u32 offset, u32 value)
+{
+  Common::WriteLittleEndian<u32>(&efb[offset], value);
+}
+
 static void SetPixelAlphaOnly(u32 offset, u8 a)
 {
   switch (bpmem.zcontrol.pixel_format)
@@ -49,10 +73,9 @@ static void SetPixelAlphaOnly(u32 offset, u8 a)
   case PixelFormat::RGBA6_Z24:
   {
     u32 a32 = a;
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xffffffc0;
+    u32 val = ReadEfbCell(offset) & 0xffffffc0;
     val |= (a32 >> 2) & 0x0000003f;
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   default:
@@ -68,32 +91,29 @@ static void SetPixelColorOnly(u32 offset, u8* rgb)
   case PixelFormat::RGB8_Z24:
   case PixelFormat::Z24:
   {
-    u32 src = *(u32*)rgb;
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xff000000;
+    u32 src = ColorToU32(rgb);
+    u32 val = ReadEfbCell(offset) & 0xff000000;
     val |= src >> 8;
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   case PixelFormat::RGBA6_Z24:
   {
-    u32 src = *(u32*)rgb;
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xff00003f;
+    u32 src = ColorToU32(rgb);
+    u32 val = ReadEfbCell(offset) & 0xff00003f;
     val |= (src >> 4) & 0x00000fc0;  // blue
     val |= (src >> 6) & 0x0003f000;  // green
     val |= (src >> 8) & 0x00fc0000;  // red
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   case PixelFormat::RGB565_Z16:
   {
     // TODO: RGB565_Z16 is not supported correctly yet
-    u32 src = *(u32*)rgb;
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xff000000;
+    u32 src = ColorToU32(rgb);
+    u32 val = ReadEfbCell(offset) & 0xff000000;
     val |= src >> 8;
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   default:
@@ -109,33 +129,30 @@ static void SetPixelAlphaColor(u32 offset, u8* color)
   case PixelFormat::RGB8_Z24:
   case PixelFormat::Z24:
   {
-    u32 src = *(u32*)color;
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xff000000;
+    u32 src = ColorToU32(color);
+    u32 val = ReadEfbCell(offset) & 0xff000000;
     val |= src >> 8;
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   case PixelFormat::RGBA6_Z24:
   {
-    u32 src = *(u32*)color;
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xff000000;
+    u32 src = ColorToU32(color);
+    u32 val = ReadEfbCell(offset) & 0xff000000;
     val |= (src >> 2) & 0x0000003f;  // alpha
     val |= (src >> 4) & 0x00000fc0;  // blue
     val |= (src >> 6) & 0x0003f000;  // green
     val |= (src >> 8) & 0x00fc0000;  // red
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   case PixelFormat::RGB565_Z16:
   {
     // TODO: RGB565_Z16 is not supported correctly yet
-    u32 src = *(u32*)color;
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xff000000;
+    u32 src = ColorToU32(color);
+    u32 val = ReadEfbCell(offset) & 0xff000000;
     val |= src >> 8;
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   default:
@@ -146,8 +163,7 @@ static void SetPixelAlphaColor(u32 offset, u8* color)
 
 static u32 GetPixelColor(u32 offset)
 {
-  u32 src;
-  std::memcpy(&src, &efb[offset], sizeof(u32));
+  const u32 src = ReadEfbCell(offset);
 
   switch (bpmem.zcontrol.pixel_format)
   {
@@ -179,19 +195,17 @@ static void SetPixelDepth(u32 offset, u32 depth)
   case PixelFormat::RGBA6_Z24:
   case PixelFormat::Z24:
   {
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xff000000;
+    u32 val = ReadEfbCell(offset) & 0xff000000;
     val |= depth & 0x00ffffff;
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   case PixelFormat::RGB565_Z16:
   {
     // TODO: RGB565_Z16 is not supported correctly yet
-    u32* dst = (u32*)&efb[offset];
-    u32 val = *dst & 0xff000000;
+    u32 val = ReadEfbCell(offset) & 0xff000000;
     val |= depth & 0x00ffffff;
-    *dst = val;
+    WriteEfbCell(offset, val);
   }
   break;
   default:
@@ -210,13 +224,13 @@ static u32 GetPixelDepth(u32 offset)
   case PixelFormat::RGBA6_Z24:
   case PixelFormat::Z24:
   {
-    depth = (*(u32*)&efb[offset]) & 0x00ffffff;
+    depth = ReadEfbCell(offset) & 0x00ffffff;
   }
   break;
   case PixelFormat::RGB565_Z16:
   {
     // TODO: RGB565_Z16 is not supported correctly yet
-    depth = (*(u32*)&efb[offset]) & 0x00ffffff;
+    depth = ReadEfbCell(offset) & 0x00ffffff;
   }
   break;
   default:
@@ -236,9 +250,9 @@ static u32 GetSourceFactor(u8* srcClr, u8* dstClr, SrcBlendFactor mode)
   case SrcBlendFactor::One:
     return 0xffffffff;
   case SrcBlendFactor::DstClr:
-    return *(u32*)dstClr;
+    return ColorToU32(dstClr);
   case SrcBlendFactor::InvDstClr:
-    return 0xffffffff - *(u32*)dstClr;
+    return 0xffffffff - ColorToU32(dstClr);
   case SrcBlendFactor::SrcAlpha:
   {
     u8 alpha = srcClr[ALP_C];
@@ -277,9 +291,9 @@ static u32 GetDestinationFactor(u8* srcClr, u8* dstClr, DstBlendFactor mode)
   case DstBlendFactor::One:
     return 0xffffffff;
   case DstBlendFactor::SrcClr:
-    return *(u32*)srcClr;
+    return ColorToU32(srcClr);
   case DstBlendFactor::InvSrcClr:
-    return 0xffffffff - *(u32*)srcClr;
+    return 0xffffffff - ColorToU32(srcClr);
   case DstBlendFactor::SrcAlpha:
   {
     u8 alpha = srcClr[ALP_C];
@@ -412,9 +426,10 @@ static void Dither(u16 x, u16 y, u8* color)
 void BlendTev(u16 x, u16 y, u8* color)
 {
   const u32 offset = GetColorOffset(x, y);
-  u32 dstClr = GetPixelColor(offset);
+  u8 dst_color[4];
+  U32ToColor(dst_color, GetPixelColor(offset));
 
-  u8* dstClrPtr = (u8*)&dstClr;
+  u8* dstClrPtr = dst_color;
 
   if (bpmem.blendmode.blend_enable)
   {
@@ -425,7 +440,9 @@ void BlendTev(u16 x, u16 y, u8* color)
   }
   else if (bpmem.blendmode.logic_op_enable)
   {
-    LogicBlend(*((u32*)color), &dstClr, bpmem.blendmode.logic_mode);
+    u32 dst = ColorToU32(dst_color);
+    LogicBlend(ColorToU32(color), &dst, bpmem.blendmode.logic_mode);
+    U32ToColor(dst_color, dst);
   }
   else
   {
@@ -481,7 +498,8 @@ static u32 VerticalFilter(const std::array<u32, 3>& colors,
                           const std::array<u8, 7>& filterCoefficients)
 {
   u8 in_colors[3][4];
-  std::memcpy(&in_colors, colors.data(), sizeof(in_colors));
+  for (size_t i = 0; i < colors.size(); i++)
+    U32ToColor(in_colors[i], colors[i]);
 
   // Alpha channel is not used
   u8 out_color[4];
@@ -520,15 +538,13 @@ static u32 VerticalFilter(const std::array<u32, 3>& colors,
     out_color[i] = std::min(255, sum >> 6);  // clamp larger values to 255
   }
 
-  u32 out_color32;
-  std::memcpy(&out_color32, out_color, sizeof(out_color32));
-  return out_color32;
+  return ColorToU32(out_color);
 }
 
 static u32 GammaCorrection(u32 color, const float gamma_rcp)
 {
   u8 in_colors[4];
-  std::memcpy(&in_colors, &color, sizeof(in_colors));
+  U32ToColor(in_colors, color);
 
   u8 out_color[4];
   for (int i = BLU_C; i <= RED_C; i++)
@@ -537,9 +553,7 @@ static u32 GammaCorrection(u32 color, const float gamma_rcp)
         std::clamp(std::pow(in_colors[i] / 255.0f, gamma_rcp) * 255.0f, 0.0f, 255.0f));
   }
 
-  u32 out_color32;
-  std::memcpy(&out_color32, out_color, sizeof(out_color32));
-  return out_color32;
+  return ColorToU32(out_color);
 }
 
 // For internal used only, return a non-normalized value, which saves work later.
