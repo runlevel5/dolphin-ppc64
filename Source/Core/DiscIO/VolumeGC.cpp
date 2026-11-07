@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "Common/Assert.h"
+#include "Common/Swap.h"
 #include "Common/ColorUtil.h"
 #include "Common/CommonTypes.h"
 #include "Common/Crypto/SHA1.h"
@@ -47,7 +48,7 @@ VolumeGC::VolumeGC(std::unique_ptr<BlobReader> reader)
       return;
     const u64 file_size = ReadFile(*this, PARTITION_NONE, file_info.get(),
                                    reinterpret_cast<u8*>(&m_triforce_header), sizeof(BootID));
-    if (file_size >= 4 && m_triforce_header.magic == BTID_MAGIC)
+    if (file_size >= 4 && Common::FromLittleEndian(m_triforce_header.magic) == BTID_MAGIC)
     {
       m_is_triforce = true;
     }
@@ -204,14 +205,16 @@ VolumeGC::ConvertedGCBanner VolumeGC::LoadBannerFile() const
     return {};  // Return early so that we don't access the uninitialized banner_file.id
   }
 
+  // "BNR1" and "BNR2" as little-endian integers
   constexpr u32 BNR1_MAGIC = 0x31524e42;
   constexpr u32 BNR2_MAGIC = 0x32524e42;
+  const u32 id = Common::FromLittleEndian(banner_file.id);
   bool is_bnr1;
-  if (banner_file.id == BNR1_MAGIC && file_size == BNR1_SIZE)
+  if (id == BNR1_MAGIC && file_size == BNR1_SIZE)
   {
     is_bnr1 = true;
   }
-  else if (banner_file.id == BNR2_MAGIC && file_size == BNR2_SIZE)
+  else if (id == BNR2_MAGIC && file_size == BNR2_SIZE)
   {
     is_bnr1 = false;
   }

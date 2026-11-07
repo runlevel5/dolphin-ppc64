@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "Common/BitUtils.h"
+#include "Common/Swap.h"
 #include "Common/CommonTypes.h"
 #include "Common/DirectIOFile.h"
 #include "Common/MsgHandler.h"
@@ -216,6 +217,8 @@ std::unique_ptr<BlobReader> CreateBlobReader(const std::string& filename)
   u32 magic;
   if (!file.Read(Common::AsWritableU8Span(magic)))
     return nullptr;
+  // The magic numbers below are the files' first four bytes as a little-endian integer.
+  magic = Common::FromLittleEndian(magic);
 
   // Conveniently, every supported file format (except for plain disc images and
   // extracted discs) starts with a 4-byte magic number that identifies the format,
