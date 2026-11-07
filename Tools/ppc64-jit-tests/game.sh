@@ -34,7 +34,8 @@ if [ -z "$video" ]; then
   tail -20 "$user/log.txt" >&2
   exit 1
 fi
-# One line per frame: frame number and MD5 of its pixels. The last frame may be cut off by the
-# timeout, so leave it out.
-ffmpeg -v error -i "$video" -f framemd5 - | grep -v "^#" | awk -F, '{gsub(/ /, "", $6); print NR - 1, $6}' |
+# One line per frame: frame number and MD5 of its pixels, in a fixed pixel format so that dumps
+# from hosts of either byte order compare. The last frame may be cut off by the timeout, so leave
+# it out.
+ffmpeg -v error -i "$video" -pix_fmt rgba -f framemd5 - | grep -v "^#" | awk -F, '{gsub(/ /, "", $6); print NR - 1, $6}' |
   head -n -1
