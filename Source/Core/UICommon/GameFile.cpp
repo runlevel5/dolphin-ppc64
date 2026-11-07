@@ -442,7 +442,7 @@ bool GameFile::ReadPNGBanner(const std::string& path)
   for (size_t i = 0; i < banner.buffer.size(); i++)
   {
     const size_t j = i * sizeof(u32);
-    banner.buffer[i] = (Common::swap32(data_out.data() + j) >> 8) + (data_out[j] << 24);
+    banner.buffer[i] = (Common::swap32(data_out.data() + j) >> 8) | (data_out[j + 3] << 24);
   }
 
   return true;
