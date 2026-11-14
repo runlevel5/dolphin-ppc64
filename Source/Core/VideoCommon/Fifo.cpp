@@ -3,6 +3,7 @@
 
 #include "VideoCommon/Fifo.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstring>
 
@@ -35,6 +36,9 @@
 namespace Fifo
 {
 static constexpr int GPU_TIME_SLOT_SIZE = 1000;
+static constexpr u32 GPU_BATCH_SIZE = 4 * 1024;
+// See WaitForGpuThreadToFetch.
+static constexpr u32 GPU_FETCH_WAIT_LIMIT = 16 * GPFifo::GATHER_PIPE_SIZE;
 
 FifoManager::FifoManager(Core::System& system) : m_system{system}
 {
@@ -219,16 +223,15 @@ void* FifoManager::PopFifoAuxBuffer(size_t size)
 }
 
 // Description: RunGpuLoop() sends data through this function.
-void FifoManager::ReadDataFromFifo(u32 read_ptr)
+void FifoManager::ReadDataFromFifo(u32 read_ptr, u32 size)
 {
-  if (GPFifo::GATHER_PIPE_SIZE >
-      static_cast<size_t>(m_video_buffer + FIFO_SIZE - m_video_buffer_write_ptr))
+  if (size > static_cast<size_t>(m_video_buffer + FIFO_SIZE - m_video_buffer_write_ptr))
   {
     const size_t existing_len = m_video_buffer_write_ptr - m_video_buffer_read_ptr;
-    if (GPFifo::GATHER_PIPE_SIZE > static_cast<size_t>(FIFO_SIZE - existing_len))
+    if (size > static_cast<size_t>(FIFO_SIZE - existing_len))
     {
-      PanicAlertFmt("FIFO out of bounds (existing {} + new {} > {})", existing_len,
-                    GPFifo::GATHER_PIPE_SIZE, FIFO_SIZE);
+      PanicAlertFmt("FIFO out of bounds (existing {} + new {} > {})", existing_len, size,
+                    FIFO_SIZE);
       return;
     }
     memmove(m_video_buffer, m_video_buffer_read_ptr, existing_len);
@@ -237,8 +240,49 @@ void FifoManager::ReadDataFromFifo(u32 read_ptr)
   }
   // Copy new video instructions to m_video_buffer for future use in rendering the new picture
   auto& memory = m_system.GetMemory();
-  memory.CopyFromEmu(m_video_buffer_write_ptr, read_ptr, GPFifo::GATHER_PIPE_SIZE);
-  m_video_buffer_write_ptr += GPFifo::GATHER_PIPE_SIZE;
+  memory.CopyFromEmu(m_video_buffer_write_ptr, read_ptr, size);
+  m_video_buffer_write_ptr += size;
+}
+
+// How much of the FIFO the GPU thread can process in one go before the CP registers, interrupts,
+// breakpoints and asynchronous requests have to be looked at again. Processing one gather pipe
+// burst at a time, as the hardware does, costs more than decoding the commands themselves on a
+// host where cross-core cache line transfers are slow. The batch ends wherever the per-burst
+// loop would have changed state: at the end of the FIFO, at a breakpoint, and where a watermark
+// is crossed, so interrupts are raised after the same burst as before.
+u32 FifoManager::GetGpuBatchSize(const CommandProcessor::SCPFifoStruct& fifo, u32 read_ptr) const
+{
+  // The CPU thread writes a burst to memory before it adds it to the distance. The loads of the
+  // burst below must not be reordered before this load, or they can get what the memory held
+  // before, which x86 doesn't do but POWER and ARM may: acquire pairs with the CPU thread's RMW.
+  const u32 distance = fifo.CPReadWriteDistance.load(std::memory_order_acquire);
+  const u32 end = fifo.CPEnd.load(std::memory_order_relaxed);
+  if (m_config_sync_gpu || read_ptr > end)
+    return GPFifo::GATHER_PIPE_SIZE;
+
+  u32 size = std::min(distance, GPU_BATCH_SIZE);
+  size = std::min(size, end + GPFifo::GATHER_PIPE_SIZE - read_ptr);
+
+  if (fifo.bFF_BPEnable.load(std::memory_order_relaxed))
+  {
+    const u32 breakpoint = fifo.CPBreakpoint.load(std::memory_order_relaxed);
+    if (breakpoint > read_ptr)
+      size = std::min(size, breakpoint - read_ptr);
+  }
+
+  // bFF_HiWatermark clears once the distance is no longer above the high watermark, and
+  // bFF_LoWatermark sets once it is below the low watermark.
+  if (distance > fifo.CPHiWatermark)
+    size = std::min(size, distance - fifo.CPHiWatermark);
+  if (distance >= fifo.CPLoWatermark)
+    size = std::min(size, distance - fifo.CPLoWatermark + GPFifo::GATHER_PIPE_SIZE);
+
+  // Leave room in the video buffer for what the batch adds to a partial command.
+  const size_t existing_len = m_video_buffer_write_ptr - m_video_buffer_read_ptr;
+  const u32 free = static_cast<u32>(FIFO_SIZE - existing_len) & ~(GPFifo::GATHER_PIPE_SIZE - 1);
+  size = std::min(size, free);
+
+  return std::max(size, GPFifo::GATHER_PIPE_SIZE);
 }
 
 // The deterministic_gpu_thread version.
@@ -294,11 +338,13 @@ void FifoManager::RunGpuLoop()
 {
   m_gpu_mainloop.Run(
       [this] {
-        // Run events from the CPU thread.
-        AsyncRequests::GetInstance()->PullEvents();
+        // Run events from the CPU thread. While paused there is no FIFO data to wait for.
+        const bool running = m_emu_running_state.IsSet();
+        AsyncRequests::GetInstance()->PullEvents(m_fifo_bytes_read.load(std::memory_order_relaxed),
+                                                 !running);
 
         // Do nothing while paused
-        if (!m_emu_running_state.IsSet())
+        if (!running)
           return;
 
         if (m_use_deterministic_gpu_thread)
@@ -331,16 +377,17 @@ void FifoManager::RunGpuLoop()
 
             u32 cyclesExecuted = 0;
             u32 readPtr = fifo.CPReadPointer.load(std::memory_order_relaxed);
-            ReadDataFromFifo(readPtr);
+            const u32 size = GetGpuBatchSize(fifo, readPtr);
+            ReadDataFromFifo(readPtr, size);
 
-            if (readPtr == fifo.CPEnd.load(std::memory_order_relaxed))
+            const u32 end = fifo.CPEnd.load(std::memory_order_relaxed);
+            if (readPtr + size == end + GPFifo::GATHER_PIPE_SIZE)
               readPtr = fifo.CPBase.load(std::memory_order_relaxed);
             else
-              readPtr += GPFifo::GATHER_PIPE_SIZE;
+              readPtr += size;
 
             const s32 distance =
-                static_cast<s32>(fifo.CPReadWriteDistance.load(std::memory_order_relaxed)) -
-                GPFifo::GATHER_PIPE_SIZE;
+                static_cast<s32>(fifo.CPReadWriteDistance.load(std::memory_order_relaxed)) - size;
             ASSERT_MSG(COMMANDPROCESSOR, distance >= 0,
                        "Negative fifo.CPReadWriteDistance = {} in FIFO Loop !\nThat can produce "
                        "instability in the game. Please report it.",
@@ -351,7 +398,9 @@ void FifoManager::RunGpuLoop()
                 DataReader(m_video_buffer_read_ptr, write_ptr), &cyclesExecuted);
 
             fifo.CPReadPointer.store(readPtr, std::memory_order_relaxed);
-            fifo.CPReadWriteDistance.fetch_sub(GPFifo::GATHER_PIPE_SIZE, std::memory_order_seq_cst);
+            // Counted before the distance shrinks: see GetFifoBytesWritten.
+            m_fifo_bytes_read.fetch_add(size, std::memory_order_release);
+            fifo.CPReadWriteDistance.fetch_sub(size, std::memory_order_seq_cst);
             if ((write_ptr - m_video_buffer_read_ptr) == 0)
             {
               fifo.SafeCPReadPointer.store(fifo.CPReadPointer.load(std::memory_order_relaxed),
@@ -374,8 +423,10 @@ void FifoManager::RunGpuLoop()
             // This call is pretty important in DualCore mode and must be called in the FIFO Loop.
             // If we don't, s_swapRequested or s_efbAccessRequested won't be set to false
             // leading the CPU thread to wait in Video_OutputXFB or Video_AccessEFB thus slowing
-            // things down.
-            AsyncRequests::GetInstance()->PullEvents();
+            // things down. Only the events queued behind data that has now been read are run,
+            // so a swap or an EFB access can't get ahead of the FIFO while the GPU thread lags.
+            AsyncRequests::GetInstance()->PullEvents(
+                m_fifo_bytes_read.load(std::memory_order_relaxed), false);
           }
 
           // fast skip remaining GPU time if fifo is empty
@@ -390,6 +441,10 @@ void FifoManager::RunGpuLoop()
           // Make sure VertexManager finishes drawing any primitives it has stored in it's buffer.
           g_vertex_manager->Flush();
           g_framebuffer_manager->RefreshPeekCache();
+
+          // Whatever is left (a breakpoint, reads disabled) won't be processed for now, so the
+          // events still waiting for it must not wait any longer either.
+          AsyncRequests::GetInstance()->PullEvents(0, true);
         }
       },
       100);
@@ -401,6 +456,25 @@ void FifoManager::FlushGpu()
     return;
 
   m_gpu_mainloop.Wait();
+}
+
+bool FifoManager::IsGpuThreadBusy() const
+{
+  return m_system.IsDualCoreMode() && !m_use_deterministic_gpu_thread && !m_gpu_mainloop.IsDone();
+}
+
+u64 FifoManager::GetFifoBytesWritten() const
+{
+  // Only the GPU thread's reads are counted; in the other modes everything counts as read.
+  if (!m_system.IsDualCoreMode() || m_use_deterministic_gpu_thread)
+    return 0;
+
+  // The GPU thread adds to the bytes read before it takes them off the distance, and the
+  // distance is loaded first here, so the sum can only overshoot what the CPU thread has written.
+  // An event that waits for slightly too much is run once the FIFO is empty anyway.
+  const auto& fifo = m_system.GetCommandProcessor().GetFifo();
+  const u64 distance = fifo.CPReadWriteDistance.load(std::memory_order_acquire);
+  return m_fifo_bytes_read.load(std::memory_order_relaxed) + distance;
 }
 
 void FifoManager::GpuMaySleep()
@@ -462,7 +536,8 @@ int FifoManager::RunGpuOnCpu(int ticks)
         Common::FPU::LoadDefaultSIMDState();
         reset_simd_state = true;
       }
-      ReadDataFromFifo(fifo.CPReadPointer.load(std::memory_order_relaxed));
+      ReadDataFromFifo(fifo.CPReadPointer.load(std::memory_order_relaxed),
+                       GPFifo::GATHER_PIPE_SIZE);
       u32 cycles = 0;
       m_video_buffer_read_ptr = OpcodeDecoder::RunFifo(
           DataReader(m_video_buffer_read_ptr, m_video_buffer_write_ptr), &cycles);
@@ -591,6 +666,33 @@ void FifoManager::SyncGPUForRegisterAccess()
     RunGpuOnCpu(GPU_TIME_SLOT_SIZE);
   else if (m_config_sync_gpu)
     WaitForGpuThread(GPU_TIME_SLOT_SIZE);
+  else
+    WaitForGpuThreadToFetch();
+}
+
+// The command processor fetches a burst within microseconds of the CPU writing it, and games
+// read the FIFO registers on that assumption: Rogue Squadron III writes a burst, reads the read
+// pointer a few dozen microseconds later and keeps it, to put the FIFO back later. The GPU thread
+// may not have got to it, in particular while an interrupt change it scheduled waits for the CPU
+// thread, and then the game keeps the burst as pending, reuses its memory in the meantime, and
+// has it decoded as commands once the FIFO is back. So wait for the GPU thread when the FIFO
+// holds no more than a few bursts: the hardware would have taken those by now.
+void FifoManager::WaitForGpuThreadToFetch()
+{
+  auto& command_processor = m_system.GetCommandProcessor();
+  const auto& fifo = command_processor.GetFifo();
+  for (int i = 0; i < 4; i++)
+  {
+    if (!fifo.bFF_GPReadEnable.load(std::memory_order_relaxed) || AtBreakpoint(m_system))
+      return;
+    const u32 distance = fifo.CPReadWriteDistance.load(std::memory_order_relaxed);
+    if (distance == 0 || distance > GPU_FETCH_WAIT_LIMIT)
+      return;
+
+    command_processor.ApplyPendingInterruptUpdate();
+    RunGpu();
+    m_gpu_mainloop.Wait();
+  }
 }
 
 // Initialize GPU - CPU thread syncing, this gives us a deterministic way to start the GPU thread.

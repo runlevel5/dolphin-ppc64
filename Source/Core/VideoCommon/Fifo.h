@@ -23,6 +23,10 @@ namespace CoreTiming
 {
 struct EventType;
 }
+namespace CommandProcessor
+{
+struct SCPFifoStruct;
+}
 
 namespace Fifo
 {
@@ -64,11 +68,18 @@ public:
   // In single core mode, this runs the GPU for a single slice.
   // In dual core mode, this synchronizes with the GPU thread.
   void SyncGPUForRegisterAccess();
+  void WaitForGpuThreadToFetch();
 
   void PushFifoAuxBuffer(const void* ptr, size_t size);
   void* PopFifoAuxBuffer(size_t size);
 
   void FlushGpu();
+  // Whether the GPU thread is working on FIFO data (always false outside dual core mode).
+  bool IsGpuThreadBusy() const;
+  // Called from the CPU thread: how much has been written to the FIFO so far, counted the way
+  // the GPU thread counts what it has read. Used to order async requests after the FIFO data
+  // that precedes them.
+  u64 GetFifoBytesWritten() const;
   void RunGpu();
   void GpuMaySleep();
   void RunGpuLoop();
@@ -78,7 +89,8 @@ public:
 
 private:
   void RefreshConfig();
-  void ReadDataFromFifo(u32 read_ptr);
+  void ReadDataFromFifo(u32 read_ptr, u32 size);
+  u32 GetGpuBatchSize(const CommandProcessor::SCPFifoStruct& fifo, u32 read_ptr) const;
   void ReadDataFromFifoOnCPU(u32 read_ptr);
   int RunGpuOnCpu(int ticks);
   int WaitForGpuThread(int ticks);
@@ -122,6 +134,8 @@ private:
   std::atomic<int> m_sync_ticks = 0;
   bool m_syncing_suspended = false;
   Common::Event m_sync_wakeup_event;
+  // Bytes the GPU thread has taken out of the FIFO, when it owns the FIFO.
+  std::atomic<u64> m_fifo_bytes_read = 0;
 
   std::optional<Config::ConfigChangedCallbackID> m_config_callback_id = std::nullopt;
   bool m_config_sync_gpu = false;

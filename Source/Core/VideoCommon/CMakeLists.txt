@@ -260,6 +260,12 @@ elseif(_M_ARM_64)
     VertexLoaderARM64.cpp
     VertexLoaderARM64.h
   )
+elseif(_M_PPC_64)
+  target_sources(videocommon PRIVATE
+    VertexLoaderPPC64.cpp
+    VertexLoaderPPC64.h
+    TextureDecoder_Generic.cpp
+  )
 else()
   target_sources(videocommon PRIVATE
     TextureDecoder_Generic.cpp
