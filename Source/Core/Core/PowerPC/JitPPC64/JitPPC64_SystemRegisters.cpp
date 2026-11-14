@@ -5,6 +5,7 @@
 
 #include "Common/CommonTypes.h"
 #include "Common/PPC64Emitter.h"
+#include "Common/Swap.h"
 #include "Core/CoreTiming.h"
 #include "Core/HW/Memmap.h"
 #include "Core/HW/SystemTimers.h"
@@ -115,11 +116,21 @@ void JitPPC64::mfspr(UGeckoInstruction inst)
   case SPR_TL:
   case SPR_TU:
   {
-    // The interpreter also updates both halves in PowerPCState.
+    // The interpreter also updates both halves in PowerPCState. One doubleword store does both
+    // when the low half comes first in memory.
     const auto tb = gpr.GetScopedReg();
     EmitTimeBase(tb);
     static_assert(PPCSTATE_OFF_SPR(SPR_TU) == PPCSTATE_OFF_SPR(SPR_TL) + 4);
-    STD(tb, PPC_REG, PPCSTATE_OFF_SPR(SPR_TL));
+    if (Common::kHostBigEndian)
+    {
+      const auto rotated = gpr.GetScopedReg();
+      ROTLDI(rotated, tb, 32);
+      STD(rotated, PPC_REG, PPCSTATE_OFF_SPR(SPR_TL));
+    }
+    else
+    {
+      STD(tb, PPC_REG, PPCSTATE_OFF_SPR(SPR_TL));
+    }
     if (spr == SPR_TU)
       SRDI(gpr.RW(inst.RD), tb, 32);
     else

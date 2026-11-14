@@ -288,8 +288,9 @@ void KeyboardMouse::UpdateCursor(bool should_center_mouse)
     // X buttons are 1-indexed, so to get 32 button bits we need a larger type
     // for the shift.
     u64 buttons_zero_indexed = 0;
-    std::memcpy(&buttons_zero_indexed, button_state.mask,
-                std::min<size_t>(button_state.mask_len, sizeof(m_state.buttons)));
+    const size_t mask_len = std::min<size_t>(button_state.mask_len, sizeof(m_state.buttons));
+    for (size_t i = 0; i < mask_len; ++i)
+      buttons_zero_indexed |= static_cast<u64>(button_state.mask[i]) << (8 * i);
     m_state.buttons = buttons_zero_indexed >> 1;
 
     free(button_state.mask);

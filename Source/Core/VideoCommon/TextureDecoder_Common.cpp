@@ -315,7 +315,7 @@ static inline u32 DecodePixel_IA8(u16 val)
 {
   int a = val & 0xFF;
   int i = val >> 8;
-  return i | (i << 8) | (i << 16) | (a << 24);
+  return MakeRGBA(i, i, i, a);
 }
 
 static inline u32 DecodePixel_RGB565(u16 val)
@@ -325,7 +325,7 @@ static inline u32 DecodePixel_RGB565(u16 val)
   g = Convert6To8((val >> 5) & 0x3f);
   b = Convert5To8((val) & 0x1f);
   a = 0xFF;
-  return r | (g << 8) | (b << 16) | (a << 24);
+  return MakeRGBA(r, g, b, a);
 }
 
 static inline u32 DecodePixel_RGB5A3(u16 val)
@@ -345,7 +345,7 @@ static inline u32 DecodePixel_RGB5A3(u16 val)
     g = Convert4To8((val >> 4) & 0xf);
     b = Convert4To8((val) & 0xf);
   }
-  return r | (g << 8) | (b << 16) | (a << 24);
+  return MakeRGBA(r, g, b, a);
 }
 
 static inline u32 DecodePixel_Paletted(u16 pixel, TLUTFormat tlutfmt)
@@ -729,10 +729,21 @@ inline F32x4 Unfused(F32x4 value)
 {
   constexpr u8 Z = 16;
   const U8x16 zero = vec_splats(static_cast<unsigned char>(0));
-  const U8x16 y1_mask = {0, Z, Z, Z, 4, Z, Z, Z, 8, Z, Z, Z, 12, Z, Z, Z};
-  const U8x16 u_mask = {1, Z, Z, Z, 5, Z, Z, Z, 9, Z, Z, Z, 13, Z, Z, Z};
-  const U8x16 y2_mask = {2, Z, Z, Z, 6, Z, Z, Z, 10, Z, Z, Z, 14, Z, Z, Z};
-  const U8x16 v_mask = {3, Z, Z, Z, 7, Z, Z, Z, 11, Z, Z, Z, 15, Z, Z, Z};
+  // Each sample's byte goes to the least significant byte of its word: the first byte of the word
+  // on a little-endian host, the last on a big-endian one.
+  const auto sample_mask = [](u8 first) {
+    U8x16 mask = vec_splats(static_cast<unsigned char>(Z));
+    for (int word = 0; word < 4; word++)
+    {
+      mask[4 * word + (Common::kHostBigEndian ? 3 : 0)] =
+          static_cast<unsigned char>(first + 4 * word);
+    }
+    return mask;
+  };
+  const U8x16 y1_mask = sample_mask(0);
+  const U8x16 u_mask = sample_mask(1);
+  const U8x16 y2_mask = sample_mask(2);
+  const U8x16 v_mask = sample_mask(3);
   // R, G and B of the first pixels in bytes 0-3 of their packs, of the second pixels in 4-7.
   const U8x16 rgba_lo = {0, 8, 16, 24, 4, 12, 20, 24, 1, 9, 17, 24, 5, 13, 21, 24};
   const U8x16 rgba_hi = {2, 10, 18, 24, 6, 14, 22, 24, 3, 11, 19, 24, 7, 15, 23, 24};
@@ -844,10 +855,10 @@ void TexDecoder_DecodeXFB(u8* dst, const u8* src, u32 width, u32 height, u32 str
       u8 G2 = static_cast<u8>(std::clamp(int(1.164f * Y2 - 0.392f * U - 0.813f * V), 0, 255));
       u8 B2 = static_cast<u8>(std::clamp(int(1.164f * Y2 + 2.017f * U), 0, 255));
 
-      u32 rgba = 0xff000000 | B1 << 16 | G1 << 8 | R1;
+      u32 rgba = MakeRGBA(R1, G1, B1, 0xff);
       std::memcpy(dst_ptr, &rgba, sizeof(rgba));
       dst_ptr += sizeof(rgba);
-      rgba = 0xff000000 | B2 << 16 | G2 << 8 | R2;
+      rgba = MakeRGBA(R2, G2, B2, 0xff);
       std::memcpy(dst_ptr, &rgba, sizeof(rgba));
       dst_ptr += sizeof(rgba);
     }

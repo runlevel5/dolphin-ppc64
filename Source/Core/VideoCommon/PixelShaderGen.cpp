@@ -1140,7 +1140,7 @@ static void WriteStage(ShaderCode& out, const pixel_shader_uid_data* uid_data, i
     texcoord = 0;
 
   {
-    const TevStageIndirect tevind{.hex = stage.tevind};
+    const TevStageIndirect tevind{.fullhex = stage.tevind};
     out.Write("\t// indirect op\n");
 
     // Quirk: Referencing a stage above the number of ind stages is undefined behavior,

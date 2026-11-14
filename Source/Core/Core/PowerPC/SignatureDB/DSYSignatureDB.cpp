@@ -10,6 +10,7 @@
 #include "Common/CommonTypes.h"
 #include "Common/IOFile.h"
 #include "Common/Logging/Log.h"
+#include "Common/Swap.h"
 
 namespace
 {
@@ -28,8 +29,10 @@ bool DSYSignatureDB::Load(const std::string& file_path)
 
   if (!f)
     return false;
+  // The file's integers are little-endian.
   u32 fcount = 0;
   f.ReadArray(&fcount, 1);
+  fcount = Common::FromLittleEndian(fcount);
   for (size_t i = 0; i < fcount; i++)
   {
     FuncDesc temp;
@@ -40,8 +43,8 @@ bool DSYSignatureDB::Load(const std::string& file_path)
 
     HashSignatureDB::DBFunc func;
     func.name = temp.name;
-    func.size = temp.size;
-    m_database[temp.checksum] = func;
+    func.size = Common::FromLittleEndian(temp.size);
+    m_database[Common::FromLittleEndian(temp.checksum)] = func;
   }
 
   return true;
@@ -56,14 +59,14 @@ bool DSYSignatureDB::Save(const std::string& file_path) const
     ERROR_LOG_FMT(SYMBOLS, "Database save failed");
     return false;
   }
-  u32 fcount = static_cast<u32>(m_database.size());
+  const u32 fcount = Common::ToLittleEndian(static_cast<u32>(m_database.size()));
   f.WriteArray(&fcount, 1);
   for (const auto& entry : m_database)
   {
     FuncDesc temp;
     memset(&temp, 0, sizeof(temp));
-    temp.checksum = entry.first;
-    temp.size = entry.second.size;
+    temp.checksum = Common::ToLittleEndian(entry.first);
+    temp.size = Common::ToLittleEndian(entry.second.size);
     strncpy(temp.name, entry.second.name.c_str(), 127);
     f.WriteArray(&temp, 1);
   }

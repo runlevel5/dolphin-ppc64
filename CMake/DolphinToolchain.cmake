@@ -1,6 +1,6 @@
 set(ARCH "generic" CACHE STRING "Target architecture")
 
-set(VALID_ARCHS x86_64 arm64 generic)
+set(VALID_ARCHS x86_64 arm64 ppc64le ppc64 generic)
 if(NOT ARCH IN_LIST VALID_ARCHS)
     message(FATAL_ERROR "Invalid ARCH='${ARCH}'. Valid: ${VALID_ARCHS}")
 endif()

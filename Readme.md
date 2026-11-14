@@ -18,7 +18,8 @@ Please read the [FAQ](https://dolphin-emu.org/docs/faq/) before using Dolphin.
     * macOS (11.0 Big Sur or higher).
     * Unix-like systems other than Linux are not officially supported but might work.
 * Processor
-    * A CPU with SSE2 support.
+    * A CPU with SSE2 support, or a 64-bit ARM CPU, or a Power ISA 2.07 (POWER8 or newer) CPU in
+      either byte order.
     * A modern CPU (3 GHz and Dual Core, not older than 2008) is highly recommended.
 * Graphics
     * A reasonably modern graphics card (Direct3D 11.1 / OpenGL 3.3).

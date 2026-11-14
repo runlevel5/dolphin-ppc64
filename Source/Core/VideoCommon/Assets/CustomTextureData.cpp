@@ -4,6 +4,7 @@
 #include "VideoCommon/Assets/CustomTextureData.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -13,6 +14,7 @@
 #include "Common/IOFile.h"
 #include "Common/Image.h"
 #include "Common/Logging/Log.h"
+#include "Common/Swap.h"
 #include "VideoCommon/VideoConfig.h"
 
 namespace
@@ -127,6 +129,18 @@ struct DDS_HEADER_DXT10
 static_assert(sizeof(DDS_HEADER) == 124, "DDS Header size mismatch");
 static_assert(sizeof(DDS_HEADER_DXT10) == 20, "DDS DX10 Extended Header size mismatch");
 
+// The headers are little-endian words in the file.
+template <typename T>
+static void FromLittleEndianWords(T* header)
+{
+  static_assert(sizeof(T) % sizeof(u32) == 0);
+  std::array<u32, sizeof(T) / sizeof(u32)> words;
+  std::memcpy(words.data(), header, sizeof(T));
+  for (u32& word : words)
+    word = Common::FromLittleEndian(word);
+  std::memcpy(header, words.data(), sizeof(T));
+}
+
 constexpr DDS_PIXELFORMAT DDSPF_A8R8G8B8 = {
     sizeof(DDS_PIXELFORMAT), DDS_RGBA, 0, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000};
 constexpr DDS_PIXELFORMAT DDSPF_X8R8G8B8 = {
@@ -205,11 +219,8 @@ static void ConvertTexture_A8R8G8B8(VideoCommon::CustomTextureData::ArraySlice::
   {
     for (u32 x = 0; x < level->row_length; x++)
     {
-      // Byte swap ABGR -> RGBA
-      u32 val;
-      std::memcpy(&val, data_ptr, sizeof(val));
-      val = ((val & 0xFF00FF00) | ((val >> 16) & 0xFF) | ((val << 16) & 0xFF0000));
-      std::memcpy(data_ptr, &val, sizeof(u32));
+      // Byte swap BGRA -> RGBA
+      std::swap(data_ptr[0], data_ptr[2]);
       data_ptr += sizeof(u32);
     }
   }
@@ -222,11 +233,9 @@ static void ConvertTexture_X8R8G8B8(VideoCommon::CustomTextureData::ArraySlice::
   {
     for (u32 x = 0; x < level->row_length; x++)
     {
-      // Byte swap XBGR -> RGBX, and set alpha to full intensity.
-      u32 val;
-      std::memcpy(&val, data_ptr, sizeof(val));
-      val = ((val & 0x0000FF00) | ((val >> 16) & 0xFF) | ((val << 16) & 0xFF0000)) | 0xFF000000;
-      std::memcpy(data_ptr, &val, sizeof(u32));
+      // Byte swap BGRX -> RGBX, and set alpha to full intensity.
+      std::swap(data_ptr[0], data_ptr[2]);
+      data_ptr[3] = 0xFF;
       data_ptr += sizeof(u32);
     }
   }
@@ -244,10 +253,10 @@ static void ConvertTexture_R8G8B8(VideoCommon::CustomTextureData::ArraySlice::Le
     for (u32 x = 0; x < level->row_length; x++)
     {
       // This is BGR in memory.
-      u32 val;
-      std::memcpy(&val, rgb_data_ptr, sizeof(val));
-      val = ((val & 0x0000FF00) | ((val >> 16) & 0xFF) | ((val << 16) & 0xFF0000)) | 0xFF000000;
-      std::memcpy(data_ptr, &val, sizeof(u32));
+      data_ptr[0] = rgb_data_ptr[2];
+      data_ptr[1] = rgb_data_ptr[1];
+      data_ptr[2] = rgb_data_ptr[0];
+      data_ptr[3] = 0xFF;
       data_ptr += sizeof(u32);
       rgb_data_ptr += 3;
     }
@@ -261,12 +270,15 @@ static bool ParseDDSHeader(File::IOFile& file, DDSLoadInfo* info)
   // Exit as early as possible for non-DDS textures, since all extensions are currently
   // passed through this function.
   u32 magic;
-  if (!file.ReadBytes(&magic, sizeof(magic)) || magic != DDS_MAGIC)
+  if (!file.ReadBytes(&magic, sizeof(magic)) || Common::FromLittleEndian(magic) != DDS_MAGIC)
     return false;
 
   DDS_HEADER header;
   size_t header_size = sizeof(header);
-  if (!file.ReadBytes(&header, header_size) || header.dwSize < header_size)
+  if (!file.ReadBytes(&header, header_size))
+    return false;
+  FromLittleEndianWords(&header);
+  if (header.dwSize < header_size)
     return false;
 
   // Required fields.
@@ -309,6 +321,7 @@ static bool ParseDDSHeader(File::IOFile& file, DDSLoadInfo* info)
       DDS_HEADER_DXT10 dxt10_header;
       if (!file.ReadBytes(&dxt10_header, sizeof(dxt10_header)))
         return false;
+      FromLittleEndianWords(&dxt10_header);
 
       info->array_size = dxt10_header.arraySize;
       header_size += sizeof(dxt10_header);

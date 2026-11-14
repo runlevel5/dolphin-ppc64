@@ -18,6 +18,7 @@
 #include "Common/FileUtil.h"
 #include "Common/IniFile.h"
 #include "Common/JsonUtil.h"
+#include "Common/Swap.h"
 #include "Core/AchievementApprovedHash.h"
 #include "Core/ActionReplay.h"
 #include "Core/GeckoCode.h"
@@ -74,14 +75,14 @@ TEST(PatchAllowlist, VerifyHashes)
         continue;
       // Hash patch
       auto context = Common::SHA1::CreateContext();
-      context->Update(Common::BitCastToArray<u8>(static_cast<u64>(patch.entries.size())));
+      context->Update(Common::LittleEndianBytes(static_cast<u64>(patch.entries.size())));
       for (const auto& entry : patch.entries)
       {
-        context->Update(Common::BitCastToArray<u8>(entry.type));
-        context->Update(Common::BitCastToArray<u8>(entry.address));
-        context->Update(Common::BitCastToArray<u8>(entry.value));
-        context->Update(Common::BitCastToArray<u8>(entry.comparand));
-        context->Update(Common::BitCastToArray<u8>(entry.conditional));
+        context->Update(Common::LittleEndianBytes(entry.type));
+        context->Update(Common::LittleEndianBytes(entry.address));
+        context->Update(Common::LittleEndianBytes(entry.value));
+        context->Update(Common::LittleEndianBytes(entry.comparand));
+        context->Update(Common::LittleEndianBytes(entry.conditional));
       }
       auto digest = context->Finish();
       approved[patch.name] = picojson::value(Common::SHA1::DigestToString(digest));
@@ -93,11 +94,11 @@ TEST(PatchAllowlist, VerifyHashes)
         continue;
       // Hash patch
       auto context = Common::SHA1::CreateContext();
-      context->Update(Common::BitCastToArray<u8>(static_cast<u64>(code.codes.size())));
+      context->Update(Common::LittleEndianBytes(static_cast<u64>(code.codes.size())));
       for (const auto& entry : code.codes)
       {
-        context->Update(Common::BitCastToArray<u8>(entry.address));
-        context->Update(Common::BitCastToArray<u8>(entry.data));
+        context->Update(Common::LittleEndianBytes(entry.address));
+        context->Update(Common::LittleEndianBytes(entry.data));
       }
       auto digest = context->Finish();
       approved[code.name] = picojson::value(Common::SHA1::DigestToString(digest));
@@ -109,11 +110,11 @@ TEST(PatchAllowlist, VerifyHashes)
         continue;
       // Hash patch
       auto context = Common::SHA1::CreateContext();
-      context->Update(Common::BitCastToArray<u8>(static_cast<u64>(code.ops.size())));
+      context->Update(Common::LittleEndianBytes(static_cast<u64>(code.ops.size())));
       for (const auto& entry : code.ops)
       {
-        context->Update(Common::BitCastToArray<u8>(entry.cmd_addr));
-        context->Update(Common::BitCastToArray<u8>(entry.value));
+        context->Update(Common::LittleEndianBytes(entry.cmd_addr));
+        context->Update(Common::LittleEndianBytes(entry.value));
       }
       auto digest = context->Finish();
       approved[code.name] = picojson::value(Common::SHA1::DigestToString(digest));

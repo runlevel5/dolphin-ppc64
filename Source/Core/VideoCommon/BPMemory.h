@@ -10,6 +10,7 @@
 #include "Common/BitField.h"
 #include "Common/BitUtils.h"
 #include "Common/CommonTypes.h"
+#include "Common/Swap.h"
 #include "Common/EnumFormatter.h"
 #include "Common/EnumMap.h"
 #include "Common/Inline.h"
@@ -722,11 +723,8 @@ union TevStageIndirect
   BitField<20, 1, bool, u32> fb_addprev;  // true if the texture coordinate results from the
                                           // previous TEV stage should be added
 
-  struct
-  {
-    u32 hex : 21;
-    u32 unused : 11;
-  };
+  BitField<0, 21, u32> hex;
+  BitField<21, 11, u32> unused;
 
   u32 fullhex;
 
@@ -2202,15 +2200,19 @@ union CopyFilterCoefficients
 
   u64 Hex;
 
-  BitField<0, 32, u32, u64> Low;
-  BitField<0, 6, u64> w0;
-  BitField<6, 6, u64> w1;
-  BitField<12, 6, u64> w2;
-  BitField<18, 6, u64> w3;
-  BitField<32, 32, u32, u64> High;
-  BitField<32, 6, u64> w4;
-  BitField<38, 6, u64> w5;
-  BitField<44, 6, u64> w6;
+  // Registers 0x53 and 0x54 are the first and the second word of the doubleword in memory, which
+  // are its low and high halves on a little-endian host and the reverse on a big-endian one.
+  static constexpr std::size_t first = Common::kHostBigEndian ? 32 : 0;
+  static constexpr std::size_t second = 32 - first;
+  BitField<first, 32, u32, u64> Low;
+  BitField<first + 0, 6, u64> w0;
+  BitField<first + 6, 6, u64> w1;
+  BitField<first + 12, 6, u64> w2;
+  BitField<first + 18, 6, u64> w3;
+  BitField<second, 32, u32, u64> High;
+  BitField<second + 0, 6, u64> w4;
+  BitField<second + 6, 6, u64> w5;
+  BitField<second + 12, 6, u64> w6;
 
   Values GetCoefficients() const
   {

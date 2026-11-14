@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "Common/BitField.h"
 #include "Common/BitUtils.h"
 #include "Common/CommonTypes.h"
 
@@ -71,18 +72,19 @@ enum class GPIO : u32
   DEBUG7 = 0x800000,
 };
 
-struct CtrlRegister
+union CtrlRegister
 {
-  u8 X1 : 1;
-  u8 X2 : 1;
-  u8 Y1 : 1;
-  u8 Y2 : 1;
-  u8 IX1 : 1;
-  u8 IX2 : 1;
-  u8 IY1 : 1;
-  u8 IY2 : 1;
+  u8 hex = 0;
+  BitField<0, 1, u8> X1;
+  BitField<1, 1, u8> X2;
+  BitField<2, 1, u8> Y1;
+  BitField<3, 1, u8> Y2;
+  BitField<4, 1, u8> IX1;
+  BitField<5, 1, u8> IX2;
+  BitField<6, 1, u8> IY1;
+  BitField<7, 1, u8> IY2;
 
-  CtrlRegister() { X1 = X2 = Y1 = Y2 = IX1 = IX2 = IY1 = IY2 = 0; }
+  CtrlRegister() = default;
   inline u8 ppc() { return (IY2 << 5) | (IY1 << 4) | (X2 << 3) | (Y1 << 2) | (Y2 << 1) | X1; }
   inline u8 arm() { return (IX2 << 5) | (IX1 << 4) | (Y2 << 3) | (X1 << 2) | (X2 << 1) | Y1; }
   inline void ppc(u32 v)

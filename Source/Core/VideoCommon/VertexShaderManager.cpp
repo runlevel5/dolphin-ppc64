@@ -226,11 +226,10 @@ void VertexShaderManager::SetConstants(std::span<const std::string> textures,
       const Light& light = xfmem.lights[i];
       VertexShaderConstants::Light& dstlight = constants.lights[i];
 
-      // xfmem.light.color is packed as abgr in u8[4], so we have to swap the order
-      dstlight.color[0] = light.color[3];
-      dstlight.color[1] = light.color[2];
-      dstlight.color[2] = light.color[1];
-      dstlight.color[3] = light.color[0];
+      dstlight.color[0] = (light.color >> 24) & 0xFF;
+      dstlight.color[1] = (light.color >> 16) & 0xFF;
+      dstlight.color[2] = (light.color >> 8) & 0xFF;
+      dstlight.color[3] = light.color & 0xFF;
 
       dstlight.cosatt[0] = light.cosatt[0];
       dstlight.cosatt[1] = light.cosatt[1];

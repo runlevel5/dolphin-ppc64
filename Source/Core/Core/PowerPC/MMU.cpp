@@ -719,17 +719,19 @@ void MMU::Write<u64>(const u64 var, const u32 address)
   WriteToHardware<XCheckTLBFlag::Write>(address + sizeof(u32), static_cast<u32>(var), 4);
 }
 
+// Byte-reversed stores (sthbrx, stwbrx): the value's bytes are reversed whatever the host's
+// byte order.
 void MMU::Write_U16_Swap(const u32 var, const u32 address)
 {
-  Write<u16>((var & 0xFFFF0000) | Common::swap16(static_cast<u16>(var)), address);
+  Write<u16>((var & 0xFFFF0000) | Common::bswap16(static_cast<u16>(var)), address);
 }
 void MMU::Write_U32_Swap(const u32 var, const u32 address)
 {
-  Write<u32>(Common::swap32(var), address);
+  Write<u32>(Common::bswap32(var), address);
 }
 void MMU::Write_U64_Swap(const u64 var, const u32 address)
 {
-  Write<u64>(Common::swap64(var), address);
+  Write<u64>(Common::bswap64(var), address);
 }
 
 template <std::unsigned_integral T>

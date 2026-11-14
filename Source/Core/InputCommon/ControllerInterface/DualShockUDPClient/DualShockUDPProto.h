@@ -10,13 +10,14 @@
 #include "Common/CommonTypes.h"
 #include "Common/Hash.h"
 #include "Common/Logging/Log.h"
+#include "Common/Swap.h"
 
 namespace ciface::DualShockUDPClient::Proto
 {
 // CemuHook DualShockUDP protocol implementation using UdpServer.cs from
 // https://github.com/Ryochan7/DS4Windows as documentation.
 //
-// WARNING: Little endian host assumed
+// The protocol's integers and floats are little-endian; the structs hold them as such.
 
 constexpr u16 CEMUHOOK_PROTOCOL_VERSION = 1001;
 
@@ -71,18 +72,18 @@ enum RegisterFlags : u8
 struct MessageHeader
 {
   std::array<u8, 4> source;
-  u16 protocol_version;
-  u16 message_length;  // actually message size minus header size
-  u32 crc32;
-  u32 source_uid;
+  Common::LittleEndianValue<u16> protocol_version;
+  Common::LittleEndianValue<u16> message_length;  // actually message size minus header size
+  Common::LittleEndianValue<u32> crc32;
+  Common::LittleEndianValue<u32> source_uid;
 };
 
 struct Touch
 {
   u8 active;
   u8 id;
-  s16 x;
-  s16 y;
+  Common::LittleEndianValue<s16> x;
+  Common::LittleEndianValue<s16> y;
 };
 
 namespace MessageType
@@ -92,7 +93,7 @@ struct VersionRequest
   static constexpr auto FROM = CLIENT;
   static constexpr auto TYPE = 0x100000U;
   MessageHeader header;
-  u32 message_type;
+  Common::LittleEndianValue<u32> message_type;
 };
 
 struct VersionResponse
@@ -100,8 +101,8 @@ struct VersionResponse
   static constexpr auto FROM = SERVER;
   static constexpr auto TYPE = 0x100000U;
   MessageHeader header;
-  u32 message_type;
-  u16 max_protocol_version;
+  Common::LittleEndianValue<u32> message_type;
+  Common::LittleEndianValue<u16> max_protocol_version;
   std::array<u8, 2> padding;
 };
 
@@ -110,8 +111,8 @@ struct ListPorts
   static constexpr auto FROM = CLIENT;
   static constexpr auto TYPE = 0x100001U;
   MessageHeader header;
-  u32 message_type;
-  u32 pad_request_count;
+  Common::LittleEndianValue<u32> message_type;
+  Common::LittleEndianValue<u32> pad_request_count;
   std::array<u8, 4> pad_ids;
 };
 
@@ -120,7 +121,7 @@ struct PortInfo
   static constexpr auto FROM = SERVER;
   static constexpr auto TYPE = 0x100001U;
   MessageHeader header;
-  u32 message_type;
+  Common::LittleEndianValue<u32> message_type;
   u8 pad_id;
   DsState pad_state;
   DsModel model;
@@ -135,7 +136,7 @@ struct PadDataRequest
   static constexpr auto FROM = CLIENT;
   static constexpr auto TYPE = 0x100002U;
   MessageHeader header;
-  u32 message_type;
+  Common::LittleEndianValue<u32> message_type;
   RegisterFlags register_flags;
   u8 pad_id_to_register;
   std::array<u8, 6> mac_address_to_register;
@@ -146,7 +147,7 @@ struct PadDataResponse
   static constexpr auto FROM = SERVER;
   static constexpr auto TYPE = 0x100002U;
   MessageHeader header;
-  u32 message_type;
+  Common::LittleEndianValue<u32> message_type;
   u8 pad_id;
   DsState pad_state;
   DsModel model;
@@ -154,7 +155,7 @@ struct PadDataResponse
   std::array<u8, 6> pad_mac_address;
   DsBattery battery_status;
   u8 active;
-  u32 hid_packet_counter;
+  Common::LittleEndianValue<u32> hid_packet_counter;
   u8 button_states1;
   u8 button_states2;
   u8 button_ps;
@@ -177,13 +178,13 @@ struct PadDataResponse
   u8 trigger_l2;
   Touch touch1;
   Touch touch2;
-  u64 accelerometer_timestamp_us;
-  float accelerometer_x_g;
-  float accelerometer_y_g;
-  float accelerometer_z_g;
-  float gyro_pitch_deg_s;
-  float gyro_yaw_deg_s;
-  float gyro_roll_deg_s;
+  Common::LittleEndianValue<u64> accelerometer_timestamp_us;
+  Common::LittleEndianValue<float> accelerometer_x_g;
+  Common::LittleEndianValue<float> accelerometer_y_g;
+  Common::LittleEndianValue<float> accelerometer_z_g;
+  Common::LittleEndianValue<float> gyro_pitch_deg_s;
+  Common::LittleEndianValue<float> gyro_yaw_deg_s;
+  Common::LittleEndianValue<float> gyro_roll_deg_s;
 };
 
 struct FromServer
@@ -193,7 +194,7 @@ struct FromServer
     struct
     {
       MessageHeader header;
-      u32 message_type;
+      Common::LittleEndianValue<u32> message_type;
     };
     MessageType::VersionResponse version_response;
     MessageType::PortInfo port_info;
@@ -208,7 +209,7 @@ struct FromClient
     struct
     {
       MessageHeader header;
-      u32 message_type;
+      Common::LittleEndianValue<u32> message_type;
     };
     MessageType::VersionRequest version_request;
     MessageType::ListPorts list_ports;

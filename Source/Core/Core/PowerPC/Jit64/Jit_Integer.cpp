@@ -325,7 +325,7 @@ void Jit64::reg_imm(UGeckoInstruction inst)
   case 24:  // ori
   case 25:  // oris
   {
-    const u32 immediate = inst.OPCD == 24 ? inst.UIMM : inst.UIMM << 16;
+    const u32 immediate = inst.OPCD == 24 ? inst.UIMM.Value() : inst.UIMM << 16;
     regimmop(a, s, true, immediate, Or, &XEmitter::OR);
     break;
   }
@@ -338,7 +338,7 @@ void Jit64::reg_imm(UGeckoInstruction inst)
   case 26:  // xori
   case 27:  // xoris
   {
-    const u32 immediate = inst.OPCD == 26 ? inst.UIMM : inst.UIMM << 16;
+    const u32 immediate = inst.OPCD == 26 ? inst.UIMM.Value() : inst.UIMM << 16;
     regimmop(a, s, true, immediate, Xor, &XEmitter::XOR, false);
     break;
   }

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "Common/BitField.h"
 #include "Common/CommonTypes.h"
 
 class PointerWrap;
@@ -67,31 +68,24 @@ private:
   {
     AICR() = default;
     explicit AICR(u32 hex_) : hex{hex_} {}
-    struct
-    {
-      u32 PSTAT : 1;     // sample counter/playback enable
-      u32 AISFR : 1;     // AIS Frequency (0=32khz 1=48khz)
-      u32 AIINTMSK : 1;  // 0=interrupt masked 1=interrupt enabled
-      u32 AIINT : 1;     // audio interrupt status
-      u32 AIINTVLD : 1;  // This bit controls whether AIINT is affected by the Interrupt Timing
-                         // register
-                         // matching the sample counter. Once set, AIINT will hold its last value
-      u32 SCRESET : 1;   // write to reset counter
-      u32 AIDFR : 1;     // AID Frequency (0=48khz 1=32khz)
-      u32 : 25;
-    };
+    BitField<0, 1, u32> PSTAT;     // sample counter/playback enable
+    BitField<1, 1, u32> AISFR;     // AIS Frequency (0=32khz 1=48khz)
+    BitField<2, 1, u32> AIINTMSK;  // 0=interrupt masked 1=interrupt enabled
+    BitField<3, 1, u32> AIINT;     // audio interrupt status
+    BitField<4, 1, u32>
+        AIINTVLD;  // This bit controls whether AIINT is affected by the Interrupt Timing
+                   // register
+                   // matching the sample counter. Once set, AIINT will hold its last value
+    BitField<5, 1, u32> SCRESET;  // write to reset counter
+    BitField<6, 1, u32> AIDFR;    // AID Frequency (0=48khz 1=32khz)
     u32 hex = 0;
   };
 
   // AI Volume Register
   union AIVR
   {
-    struct
-    {
-      u32 left : 8;
-      u32 right : 8;
-      u32 : 16;
-    };
+    BitField<0, 8, u32> left;
+    BitField<8, 8, u32> right;
     u32 hex = 0;
   };
 

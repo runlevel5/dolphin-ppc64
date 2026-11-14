@@ -129,8 +129,8 @@ void JitPPC64::psq_lXX(UGeckoInstruction inst)
 
   const bool indexed = inst.OPCD == 4;
   const bool update = inst.OPCD == 57 || (indexed && (inst.SUBOP6 & 32));
-  const u32 i = indexed ? inst.Ix : inst.I;
-  const bool single = indexed ? inst.Wx : inst.W;
+  const u32 i = indexed ? inst.Ix.Value() : inst.I.Value();
+  const bool single = indexed ? inst.Wx.Value() : inst.W.Value();
   // The invalid form is left to the interpreter.
   FALLBACK_IF(update && inst.RA == 0);
 
@@ -380,8 +380,8 @@ void JitPPC64::psq_stXX(UGeckoInstruction inst)
 
   const bool indexed = inst.OPCD == 4;
   const bool update = inst.OPCD == 61 || (indexed && (inst.SUBOP6 & 32));
-  const u32 i = indexed ? inst.Ix : inst.I;
-  const bool single = indexed ? inst.Wx : inst.W;
+  const u32 i = indexed ? inst.Ix.Value() : inst.I.Value();
+  const bool single = indexed ? inst.Wx.Value() : inst.W.Value();
   // The invalid form is left to the interpreter.
   FALLBACK_IF(update && inst.RA == 0);
 
@@ -687,21 +687,7 @@ void JitPPC64::GenerateQuantizedLoadRoutine(u32 type, bool single)
   STD(GPR::R4, GPR::SP, QUANTIZED_VALUE_SAVE);
 
   const auto slow = EmitQuantizedRAMAddress(size);
-  switch (size)
-  {
-  case 8:
-    LDBRX(GPR::R3, GPR::R0, GPR::R12);
-    break;
-  case 4:
-    LWBRX(GPR::R3, GPR::R0, GPR::R12);
-    break;
-  case 2:
-    LHBRX(GPR::R3, GPR::R0, GPR::R12);
-    break;
-  default:
-    LBZX(GPR::R3, GPR::R0, GPR::R12);
-    break;
-  }
+  EmitGuestLoad(size * 8, false, false, GPR::R3, GPR::R0, GPR::R12);
   const FixupBranch loaded = B();
   for (const FixupBranch& branch : slow)
     SetJumpTarget(branch);
@@ -848,21 +834,7 @@ void JitPPC64::GenerateQuantizedStoreRoutine(u32 type, bool single)
 
   LD(GPR::R3, GPR::SP, QUANTIZED_VALUE_SAVE);
   const auto slow = EmitQuantizedRAMAddress(size);
-  switch (size)
-  {
-  case 8:
-    STDBRX(GPR::R4, GPR::R0, GPR::R12);
-    break;
-  case 4:
-    STWBRX(GPR::R4, GPR::R0, GPR::R12);
-    break;
-  case 2:
-    STHBRX(GPR::R4, GPR::R0, GPR::R12);
-    break;
-  default:
-    STBX(GPR::R4, GPR::R0, GPR::R12);
-    break;
-  }
+  EmitGuestStore(size * 8, false, GPR::R4, GPR::R0, GPR::R12);
   const FixupBranch stored = B();
   for (const FixupBranch& branch : slow)
     SetJumpTarget(branch);

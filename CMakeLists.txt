@@ -106,7 +106,7 @@ option(USE_UPNP "Enables UPnP port mapping support" ON)
 option(ENABLE_NOGUI "Enable NoGUI frontend" OFF)
 option(ENABLE_QT "Enable Qt (Default)" ON)
 option(ENABLE_LTO "Enables Link Time Optimization" OFF)
-option(ENABLE_GENERIC "Enables generic build that should run on any little-endian host" OFF)
+option(ENABLE_GENERIC "Enables generic build without a JIT that should run on any host" OFF)
 option(ENABLE_HEADLESS "Enables running Dolphin as a headless variant" OFF)
 option(ENABLE_ALSA "Enables ALSA sound backend" ON)
 option(ENABLE_PULSEAUDIO "Enables PulseAudio sound backend" ON)
@@ -229,9 +229,25 @@ elseif(_ARCH_64 AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
   add_definitions(-D_M_ARM_64=1)
   # CRC instruction set is used in the CRC32 hash function
   check_and_add_flag(HAVE_ARCH_ARMV8 -march=armv8-a+crc)
-elseif(_ARCH_64 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
+elseif(_ARCH_64 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc64|ppc64)(le)?$")
   set(_M_PPC_64 1)
   add_definitions(-D_M_PPC_64=1)
+  # The JIT and the vector paths need Power ISA 2.07 (POWER8) with VSX. Distribution compilers
+  # often default to an older CPU, so target one explicitly; "native" works for local builds.
+  set(PPC64_CPU "power8" CACHE STRING "CPU to target with -mcpu on ppc64 (power8, power9, power10, native)")
+  check_and_add_flag(HAVE_MCPU -mcpu=${PPC64_CPU})
+  include(CheckCXXSourceCompiles)
+  set(CMAKE_REQUIRED_FLAGS "-mcpu=${PPC64_CPU}")
+  check_cxx_source_compiles("
+    #ifndef __VSX__
+    #error VSX is required
+    #endif
+    int main() { return 0; }" PPC64_HAVE_VSX)
+  unset(CMAKE_REQUIRED_FLAGS)
+  if(NOT PPC64_HAVE_VSX)
+    message(FATAL_ERROR "The ppc64 build needs VSX (POWER8 or newer). Set PPC64_CPU to a CPU with VSX, "
+        "or enable the generic build for a JIT-less binary.")
+  endif()
 else()
   message(FATAL_ERROR "You're building on an unsupported platform: "
       "'${CMAKE_SYSTEM_PROCESSOR}' with ${CMAKE_SIZEOF_VOID_P}-byte pointers."
@@ -242,6 +258,21 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
   set(DOLPHIN_HOST ARM64)
 elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x64|x86_64|amd64|AMD64")
   set(DOLPHIN_HOST x64)
+elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(powerpc64|ppc64)(le)?$")
+  set(DOLPHIN_HOST PPC64)
+endif()
+
+if(CMAKE_CXX_BYTE_ORDER STREQUAL "BIG_ENDIAN")
+  message(STATUS "Building for a big-endian host")
+  set(DOLPHIN_BIG_ENDIAN 1)
+  if(USE_DISCORD_PRESENCE)
+    message(STATUS "Disabling Discord presence: discord-rpc assumes a little-endian host")
+    set(USE_DISCORD_PRESENCE 0)
+  endif()
+  if(USE_MGBA)
+    message(STATUS "Disabling mGBA: not yet tested on big-endian hosts")
+    set(USE_MGBA 0)
+  endif()
 endif()
 
 if(CMAKE_GENERATOR MATCHES "Ninja")

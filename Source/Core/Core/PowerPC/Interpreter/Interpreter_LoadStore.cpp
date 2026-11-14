@@ -687,7 +687,7 @@ void Interpreter::lhax(Interpreter& interpreter, UGeckoInstruction inst)
 void Interpreter::lhbrx(Interpreter& interpreter, UGeckoInstruction inst)
 {
   auto& ppc_state = interpreter.m_ppc_state;
-  const u32 temp = Common::swap16(interpreter.m_mmu.Read<u16>(Helper_Get_EA_X(ppc_state, inst)));
+  const u32 temp = Common::bswap16(interpreter.m_mmu.Read<u16>(Helper_Get_EA_X(ppc_state, inst)));
 
   if (!(ppc_state.Exceptions & EXCEPTION_DSI))
   {
@@ -756,7 +756,7 @@ void Interpreter::lswx(Interpreter& interpreter, UGeckoInstruction inst)
 void Interpreter::lwbrx(Interpreter& interpreter, UGeckoInstruction inst)
 {
   auto& ppc_state = interpreter.m_ppc_state;
-  const u32 temp = Common::swap32(interpreter.m_mmu.Read<u32>(Helper_Get_EA_X(ppc_state, inst)));
+  const u32 temp = Common::bswap32(interpreter.m_mmu.Read<u32>(Helper_Get_EA_X(ppc_state, inst)));
 
   if (!(ppc_state.Exceptions & EXCEPTION_DSI))
   {
@@ -970,7 +970,7 @@ void Interpreter::stswi(Interpreter& interpreter, UGeckoInstruction inst)
     return;
   }
 
-  Helper_StoreString(interpreter, EA, inst.NB == 0 ? 32 : inst.NB, inst.RS);
+  Helper_StoreString(interpreter, EA, inst.NB == 0 ? 32 : inst.NB.Value(), inst.RS);
 }
 
 void Interpreter::stswx(Interpreter& interpreter, UGeckoInstruction inst)

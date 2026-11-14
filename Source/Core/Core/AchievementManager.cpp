@@ -23,6 +23,7 @@
 #include "Common/Logging/Log.h"
 #include "Common/ScopeGuard.h"
 #include "Common/StringUtil.h"
+#include "Common/Swap.h"
 #include "Common/Thread.h"
 #include "Common/Version.h"
 #include "Common/WorkQueueThread.h"
@@ -654,14 +655,14 @@ bool AchievementManager::IsApprovedCode(const T& code, std::string_view game_id,
 Common::SHA1::Digest AchievementManager::GetCodeHash(const PatchEngine::Patch& patch) const
 {
   auto context = Common::SHA1::CreateContext();
-  context->Update(Common::BitCastToArray<u8>(static_cast<u64>(patch.entries.size())));
+  context->Update(Common::LittleEndianBytes(static_cast<u64>(patch.entries.size())));
   for (const auto& entry : patch.entries)
   {
-    context->Update(Common::BitCastToArray<u8>(entry.type));
-    context->Update(Common::BitCastToArray<u8>(entry.address));
-    context->Update(Common::BitCastToArray<u8>(entry.value));
-    context->Update(Common::BitCastToArray<u8>(entry.comparand));
-    context->Update(Common::BitCastToArray<u8>(entry.conditional));
+    context->Update(Common::LittleEndianBytes(entry.type));
+    context->Update(Common::LittleEndianBytes(entry.address));
+    context->Update(Common::LittleEndianBytes(entry.value));
+    context->Update(Common::LittleEndianBytes(entry.comparand));
+    context->Update(Common::LittleEndianBytes(entry.conditional));
   }
   return context->Finish();
 }
@@ -669,11 +670,11 @@ Common::SHA1::Digest AchievementManager::GetCodeHash(const PatchEngine::Patch& p
 Common::SHA1::Digest AchievementManager::GetCodeHash(const Gecko::GeckoCode& code) const
 {
   auto context = Common::SHA1::CreateContext();
-  context->Update(Common::BitCastToArray<u8>(static_cast<u64>(code.codes.size())));
+  context->Update(Common::LittleEndianBytes(static_cast<u64>(code.codes.size())));
   for (const auto& entry : code.codes)
   {
-    context->Update(Common::BitCastToArray<u8>(entry.address));
-    context->Update(Common::BitCastToArray<u8>(entry.data));
+    context->Update(Common::LittleEndianBytes(entry.address));
+    context->Update(Common::LittleEndianBytes(entry.data));
   }
   return context->Finish();
 }
@@ -681,11 +682,11 @@ Common::SHA1::Digest AchievementManager::GetCodeHash(const Gecko::GeckoCode& cod
 Common::SHA1::Digest AchievementManager::GetCodeHash(const ActionReplay::ARCode& code) const
 {
   auto context = Common::SHA1::CreateContext();
-  context->Update(Common::BitCastToArray<u8>(static_cast<u64>(code.ops.size())));
+  context->Update(Common::LittleEndianBytes(static_cast<u64>(code.ops.size())));
   for (const auto& entry : code.ops)
   {
-    context->Update(Common::BitCastToArray<u8>(entry.cmd_addr));
-    context->Update(Common::BitCastToArray<u8>(entry.value));
+    context->Update(Common::LittleEndianBytes(entry.cmd_addr));
+    context->Update(Common::LittleEndianBytes(entry.value));
   }
   return context->Finish();
 }

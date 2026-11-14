@@ -442,7 +442,7 @@ bool GameFile::ReadPNGBanner(const std::string& path)
   for (size_t i = 0; i < banner.buffer.size(); i++)
   {
     const size_t j = i * sizeof(u32);
-    banner.buffer[i] = (Common::swap32(data_out.data() + j) >> 8) + (data_out[j] << 24);
+    banner.buffer[i] = (Common::swap32(data_out.data() + j) >> 8) | (data_out[j + 3] << 24);
   }
 
   return true;
@@ -644,7 +644,8 @@ std::string GameFile::GetNetPlayName(const Core::TitleDatabase& title_database) 
 
 static Common::SHA1::Digest GetHash(u32 value)
 {
-  auto data = Common::BitCastToArray<u8>(value);
+  // Hosts of either byte order must agree on the hash.
+  auto data = Common::BitCastToArray<u8>(Common::ToLittleEndian(value));
   return Common::SHA1::CalculateDigest(data);
 }
 

@@ -10,7 +10,9 @@
 
 #include <gtest/gtest.h>  // NOLINT
 
+#include "Common/CommonTypes.h"
 #include "Common/MathUtil.h"
+#include "Common/Swap.h"
 #include "VideoCommon/CPMemory.h"
 #include "VideoCommon/DataReader.h"
 #include "VideoCommon/OpcodeDecoding.h"
@@ -369,6 +371,69 @@ TEST_F(VertexLoaderTest, LargeFloatVertexSpeed)
     RunVertices(100000);
 }
 
+// Each color format comes out as R, G, B, A bytes, whatever the host's byte order.
+class VertexLoaderColorBytesTest : public VertexLoaderTest,
+                                   public ::testing::WithParamInterface<ColorFormat>
+{
+};
+INSTANTIATE_TEST_SUITE_P(AllFormats, VertexLoaderColorBytesTest,
+                         ::testing::Values(ColorFormat::RGB565, ColorFormat::RGB888,
+                                           ColorFormat::RGB888x, ColorFormat::RGBA4444,
+                                           ColorFormat::RGBA6666, ColorFormat::RGBA8888));
+
+TEST_P(VertexLoaderColorBytesTest, ColorBytes)
+{
+  const ColorFormat format = GetParam();
+  m_vtx_desc.low.Position = VertexComponentFormat::Direct;
+  m_vtx_desc.low.Color0 = VertexComponentFormat::Direct;
+  m_vtx_attr.g0.PosElements = CoordComponentCount::XY;
+  m_vtx_attr.g0.PosFormat = ComponentFormat::Float;
+  m_vtx_attr.g0.Color0Comp = format;
+
+  struct Case
+  {
+    ColorComponentCount elements;
+    std::vector<u8> input;
+    std::array<u8, 4> expected;
+  };
+  // The vertex's bytes, and the R, G, B, A bytes they decode to.
+  const Case c = [&] {
+    switch (format)
+    {
+    case ColorFormat::RGB565:  // R = 31, G = 0, B = 16
+      return Case{ColorComponentCount::RGB, {0xF8, 0x10}, {0xFF, 0x00, 0x84, 0xFF}};
+    case ColorFormat::RGB888:
+      return Case{ColorComponentCount::RGB, {0x12, 0x34, 0x56}, {0x12, 0x34, 0x56, 0xFF}};
+    case ColorFormat::RGB888x:
+      return Case{ColorComponentCount::RGB, {0x12, 0x34, 0x56, 0x00}, {0x12, 0x34, 0x56, 0xFF}};
+    case ColorFormat::RGBA4444:
+      return Case{ColorComponentCount::RGBA, {0x12, 0x34}, {0x11, 0x22, 0x33, 0x44}};
+    case ColorFormat::RGBA6666:  // R = 63, G = 0, B = 32, A = 21
+      return Case{ColorComponentCount::RGBA, {0xFC, 0x08, 0x15}, {0xFF, 0x00, 0x82, 0x55}};
+    default:
+      return Case{ColorComponentCount::RGBA, {0x12, 0x34, 0x56, 0x78}, {0x12, 0x34, 0x56, 0x78}};
+    }
+  }();
+  m_vtx_attr.g0.Color0Elements = c.elements;
+
+  CreateAndCheckSizes(2 * sizeof(float) + c.input.size(), 2 * sizeof(float) + sizeof(u32));
+
+  Input(1.0f);
+  Input(2.0f);
+  for (const u8 byte : c.input)
+    Input(byte);
+
+  RunVertices(1);
+
+  ExpectOut(1.0f);
+  ExpectOut(2.0f);
+  ASSERT_EQ(m_loader->m_native_vtx_decl.colors[0].offset, 2 * sizeof(float));
+  std::array<u8, 4> actual;
+  for (u8& byte : actual)
+    byte = m_dst.Read<u8>();
+  EXPECT_EQ(c.expected, actual);
+}
+
 TEST_F(VertexLoaderTest, DirectAllComponents)
 {
   m_vtx_desc.low.PosMatIdx = true;
@@ -472,7 +537,7 @@ TEST_F(VertexLoaderTest, DirectAllComponents)
 
   // Position matrix
   ASSERT_EQ(m_loader->m_native_vtx_decl.posmtx.offset, 0 * sizeof(float));
-  EXPECT_EQ((m_dst.Read<u32, false>()), 20u);
+  EXPECT_EQ(Common::FromLittleEndian(m_dst.Read<u32, false>()), 20u);  // the first byte
   // Position
   ASSERT_EQ(m_loader->m_native_vtx_decl.position.offset, 1 * sizeof(float));
   ExpectOut(-1.0f);

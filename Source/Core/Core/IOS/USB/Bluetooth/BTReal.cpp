@@ -74,7 +74,7 @@ std::optional<IPCReply> BluetoothRealDevice::IOCtlV(const IOCtlVRequest& request
     auto& memory = GetSystem().GetMemory();
 
     auto cmd = std::make_unique<USB::V0CtrlMessage>(GetEmulationKernel(), request);
-    const u16 opcode = Common::swap16(memory.Read_U16(cmd->data_address));
+    const u16 opcode = Common::bswap16(memory.Read_U16(cmd->data_address));
     if (!m_lib_usb_bt_adapter->IsWiiBTModule() && (opcode == 0xFC4C || opcode == 0xFC4F))
     {
       m_fake_replies.emplace(

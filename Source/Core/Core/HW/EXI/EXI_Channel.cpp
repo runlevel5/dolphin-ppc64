@@ -66,29 +66,29 @@ void CEXIChannel::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
                  MMIO::ComplexWrite<u32>([this](Core::System& system, u32, u32 val) {
                    UEXI_STATUS new_status(val);
 
-                   m_status.EXIINTMASK = new_status.EXIINTMASK;
+                   m_status.EXIINTMASK = new_status.EXIINTMASK.Value();
                    if (new_status.EXIINT)
                      m_status.EXIINT = 0;
 
-                   m_status.TCINTMASK = new_status.TCINTMASK;
+                   m_status.TCINTMASK = new_status.TCINTMASK.Value();
                    if (new_status.TCINT)
                      m_status.TCINT = 0;
 
-                   m_status.CLK = new_status.CLK;
+                   m_status.CLK = new_status.CLK.Value();
 
                    if (m_channel_id == 0 || m_channel_id == 1)
                    {
-                     m_status.EXTINTMASK = new_status.EXTINTMASK;
+                     m_status.EXTINTMASK = new_status.EXTINTMASK.Value();
 
                      if (new_status.EXTINT)
                        m_status.EXTINT = 0;
                    }
 
                    if (m_channel_id == 0)
-                     m_status.ROMDIS = new_status.ROMDIS;
+                     m_status.ROMDIS = new_status.ROMDIS.Value();
 
                    IEXIDevice* device = GetDevice(m_status.CHIP_SELECT ^ new_status.CHIP_SELECT);
-                   m_status.CHIP_SELECT = new_status.CHIP_SELECT;
+                   m_status.CHIP_SELECT = new_status.CHIP_SELECT.Value();
                    if (device != nullptr)
                      device->SetCS(m_status.CHIP_SELECT);
 

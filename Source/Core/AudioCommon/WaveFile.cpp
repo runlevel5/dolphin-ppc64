@@ -108,6 +108,7 @@ void WaveFileWriter::Stop()
 
 void WaveFileWriter::Write(u32 value)
 {
+  value = Common::ToLittleEndian(value);
   m_file.WriteArray(&value, 1);
 }
 
@@ -147,9 +148,10 @@ void WaveFileWriter::AddStereoSamplesBE(const short* sample_data, u32 count,
 
   for (u32 i = 0; i < count; i++)
   {
-    // Flip the audio channels from RL to LR
-    m_conv_buffer[2 * i] = Common::swap16((u16)sample_data[2 * i + 1]);
-    m_conv_buffer[2 * i + 1] = Common::swap16((u16)sample_data[2 * i]);
+    // Flip the audio channels from RL to LR, and the samples from big-endian to the file's
+    // little-endian.
+    m_conv_buffer[2 * i] = Common::bswap16((u16)sample_data[2 * i + 1]);
+    m_conv_buffer[2 * i + 1] = Common::bswap16((u16)sample_data[2 * i]);
 
     // Apply volume (volume ranges from 0 to 256)
     m_conv_buffer[2 * i] = m_conv_buffer[2 * i] * l_volume / 256;

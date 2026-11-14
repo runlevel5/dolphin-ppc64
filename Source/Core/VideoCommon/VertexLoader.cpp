@@ -3,6 +3,8 @@
 
 #include "VideoCommon/VertexLoader.h"
 
+#include <array>
+
 #include "Common/Assert.h"
 #include "Common/CommonTypes.h"
 
@@ -23,7 +25,8 @@ static void PosMtx_ReadDirect_UByte(VertexLoader* loader)
   u32 posmtx = DataRead<u8>() & 0x3f;
   if (loader->m_remaining < 3)
     VertexLoaderManager::position_matrix_index_cache[loader->m_remaining] = posmtx;
-  DataWrite<u32>(posmtx);
+  // The index is the first of the four bytes of the attribute.
+  DataWrite(std::array<u8, 4>{static_cast<u8>(posmtx), 0, 0, 0});
   PRIM_LOG("posmtx: {}, ", posmtx);
 }
 

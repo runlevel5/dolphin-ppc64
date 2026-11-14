@@ -121,7 +121,7 @@ bool AlsaSound::AlsaInit()
     return false;
   }
 
-  err = snd_pcm_hw_params_set_format(handle, hwparams, SND_PCM_FORMAT_S16_LE);
+  err = snd_pcm_hw_params_set_format(handle, hwparams, SND_PCM_FORMAT_S16);
   if (err < 0)
   {
     ERROR_LOG_FMT(AUDIO, "Sample format not available: {}", snd_strerror(err));

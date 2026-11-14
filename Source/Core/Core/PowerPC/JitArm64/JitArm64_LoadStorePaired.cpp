@@ -35,8 +35,8 @@ void JitArm64::psq_lXX(UGeckoInstruction inst)
   const s32 offset = inst.SIMM_12;
   const bool indexed = inst.OPCD == 4;
   const bool update = inst.OPCD == 57 || (inst.OPCD == 4 && !!(inst.SUBOP6 & 32));
-  const int i = indexed ? inst.Ix : inst.I;
-  const int w = indexed ? inst.Wx : inst.W;
+  const int i = indexed ? inst.Ix.Value() : inst.I.Value();
+  const int w = indexed ? inst.Wx.Value() : inst.W.Value();
 
   gpr.Lock(ARM64Reg::W1, ARM64Reg::W30);
   fpr.Lock(ARM64Reg::Q0);
@@ -162,8 +162,8 @@ void JitArm64::psq_stXX(UGeckoInstruction inst)
   const s32 offset = inst.SIMM_12;
   const bool indexed = inst.OPCD == 4;
   const bool update = inst.OPCD == 61 || (inst.OPCD == 4 && !!(inst.SUBOP6 & 32));
-  const int i = indexed ? inst.Ix : inst.I;
-  const int w = indexed ? inst.Wx : inst.W;
+  const int i = indexed ? inst.Ix.Value() : inst.I.Value();
+  const int w = indexed ? inst.Wx.Value() : inst.W.Value();
 
   fpr.Lock(ARM64Reg::Q0);
   if (!js.assumeNoPairedQuantize)

@@ -5,6 +5,7 @@
 
 #include <atomic>
 
+#include "Common/BitField.h"
 #include "Common/CommonTypes.h"
 #include "Common/Flag.h"
 
@@ -104,15 +105,11 @@ enum
 // Fifo Status Register
 union UCPStatusReg
 {
-  struct
-  {
-    u16 OverflowHiWatermark : 1;
-    u16 UnderflowLoWatermark : 1;
-    u16 ReadIdle : 1;
-    u16 CommandIdle : 1;
-    u16 Breakpoint : 1;
-    u16 : 11;
-  };
+  BitField<0, 1, u16> OverflowHiWatermark;
+  BitField<1, 1, u16> UnderflowLoWatermark;
+  BitField<2, 1, u16> ReadIdle;
+  BitField<3, 1, u16> CommandIdle;
+  BitField<4, 1, u16> Breakpoint;
   u16 Hex;
   UCPStatusReg() { Hex = 0; }
   UCPStatusReg(u16 _hex) { Hex = _hex; }
@@ -121,16 +118,12 @@ union UCPStatusReg
 // Fifo Control Register
 union UCPCtrlReg
 {
-  struct
-  {
-    u16 GPReadEnable : 1;
-    u16 BPEnable : 1;
-    u16 FifoOverflowIntEnable : 1;
-    u16 FifoUnderflowIntEnable : 1;
-    u16 GPLinkEnable : 1;
-    u16 BPInt : 1;
-    u16 : 10;
-  };
+  BitField<0, 1, u16> GPReadEnable;
+  BitField<1, 1, u16> BPEnable;
+  BitField<2, 1, u16> FifoOverflowIntEnable;
+  BitField<3, 1, u16> FifoUnderflowIntEnable;
+  BitField<4, 1, u16> GPLinkEnable;
+  BitField<5, 1, u16> BPInt;
   u16 Hex;
   UCPCtrlReg() { Hex = 0; }
   UCPCtrlReg(u16 _hex) { Hex = _hex; }
@@ -139,14 +132,10 @@ union UCPCtrlReg
 // Fifo Clear Register
 union UCPClearReg
 {
-  struct
-  {
-    u16 ClearFifoOverflow : 1;
-    u16 ClearFifoUnderflow : 1;
-    // set by GXClearGPMetric
-    u16 ClearMetrics : 1;
-    u16 : 13;
-  };
+  BitField<0, 1, u16> ClearFifoOverflow;
+  BitField<1, 1, u16> ClearFifoUnderflow;
+  // set by GXClearGPMetric
+  BitField<2, 1, u16> ClearMetrics;
   u16 Hex;
   UCPClearReg() { Hex = 0; }
   UCPClearReg(u16 _hex) { Hex = _hex; }

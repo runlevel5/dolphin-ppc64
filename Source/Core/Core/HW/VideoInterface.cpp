@@ -147,13 +147,17 @@ void VideoInterfaceManager::Preset(bool _bNTSC)
   m_interrupt_register[2].Hex = 0;
   m_interrupt_register[3].Hex = 0;
 
-  m_latch_register = {};
+  for (auto& reg : m_latch_register)
+    reg.Hex = 0;
 
   m_picture_configuration.STD = 40;
   m_picture_configuration.WPL = 40;
 
   m_horizontal_scaling.Hex = 0;
-  m_filter_coef_tables = {};
+  for (auto& table : m_filter_coef_tables.Tables02)
+    table.Hex = 0;
+  for (auto& table : m_filter_coef_tables.Tables36)
+    table.Hex = 0;
   m_unknown_aa_register = 0;
 
   DiscIO::Region region = SConfig::GetInstance().m_region;
@@ -398,18 +402,19 @@ void VideoInterfaceManager::RegisterMMIO(MMIO::Mapping* mmio, u32 base)
                    auto& vi = system.GetVideoInterface();
 
                    UVIDisplayControlRegister tmpConfig(val);
-                   vi.m_display_control_register.ENB = tmpConfig.ENB;
-                   vi.m_display_control_register.NIN = tmpConfig.NIN;
-                   vi.m_display_control_register.DLR = tmpConfig.DLR;
-                   vi.m_display_control_register.LE0 = tmpConfig.LE0;
-                   vi.m_display_control_register.LE1 = tmpConfig.LE1;
-                   vi.m_display_control_register.FMT = tmpConfig.FMT;
+                   vi.m_display_control_register.ENB = tmpConfig.ENB.Value();
+                   vi.m_display_control_register.NIN = tmpConfig.NIN.Value();
+                   vi.m_display_control_register.DLR = tmpConfig.DLR.Value();
+                   vi.m_display_control_register.LE0 = tmpConfig.LE0.Value();
+                   vi.m_display_control_register.LE1 = tmpConfig.LE1.Value();
+                   vi.m_display_control_register.FMT = tmpConfig.FMT.Value();
 
                    if (tmpConfig.RST)
                    {
                      // shuffle2 clear all data, reset to default vals, and enter idle mode
                      vi.m_display_control_register.RST = 0;
-                     vi.m_interrupt_register = {};
+                     for (auto& reg : vi.m_interrupt_register)
+                       reg.Hex = 0;
                      vi.UpdateInterrupts();
                    }
 

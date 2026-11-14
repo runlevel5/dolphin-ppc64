@@ -289,7 +289,7 @@ bool FFMpegFrameDump::CreateVideoFile()
   if (pix_fmt == AV_PIX_FMT_NONE)
   {
     if (m_context->codec->codec_id == AV_CODEC_ID_FFV1)
-      pix_fmt = AV_PIX_FMT_BGR0;
+      pix_fmt = AV_PIX_FMT_0RGB32;  // bgr0 on a little-endian host, 0rgb on a big-endian one
     else if (m_context->codec->codec_id == AV_CODEC_ID_UTVIDEO)
       pix_fmt = AV_PIX_FMT_GBRP;
     else

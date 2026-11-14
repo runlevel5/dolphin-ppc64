@@ -86,11 +86,7 @@ private:
   union MIProtAddr
   {
     u32 hex = 0;
-    struct
-    {
-      u16 lo;
-      u16 hi;
-    };
+    DOLPHIN_U32_HALVES(lo, hi);
     BitField<0, 5, u32> reserved_1;
     BitField<5, 25, u32> addr;
     BitField<30, 2, u32> reserved_2;
@@ -99,11 +95,7 @@ private:
   union MITimer
   {
     u32 hex = 0;
-    struct
-    {
-      u16 lo;
-      u16 hi;
-    };
+    DOLPHIN_U32_HALVES(lo, hi);
   };
 
   struct MIMemStruct

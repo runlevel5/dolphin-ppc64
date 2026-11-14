@@ -29,6 +29,7 @@
 #include "Common/Logging/Log.h"
 #include "Common/MsgHandler.h"
 #include "Common/StringUtil.h"
+#include "Common/Swap.h"
 #include "Common/Thread.h"
 #include "Common/TimeUtil.h"
 #include "Common/TransferableSharedMutex.h"
@@ -725,6 +726,13 @@ static bool ValidateHeaders(const StateHeader& header)
     std::string newest_version = version_range.second;
 
     loaded_str = "Dolphin " + oldest_version + " - " + newest_version;
+  }
+  else if (Common::bswap32(header.version_header.version_cookie) - COOKIE_BASE == STATE_VERSION)
+  {
+    // Savestates hold the host's representation of the state, so one from a host of the other
+    // byte order can't be loaded even when its version matches.
+    success = false;
+    loaded_str = "from a host of the other byte order";
   }
   else if (loaded_version != STATE_VERSION)
   {

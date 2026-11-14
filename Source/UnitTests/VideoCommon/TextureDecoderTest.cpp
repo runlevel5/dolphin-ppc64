@@ -229,6 +229,45 @@ TEST_F(TextureDecoderTest, CMPR)
   TestTextures(TextureFormat::CMPR, TLUTFormat::IA8, "CMPR");
 }
 
+// Decoded pixels are R, G, B, A bytes in memory, whatever the host's byte order.
+TEST(TextureDecoderBytes, RGB565)
+{
+  // One 4x4 block of 16-bit big-endian texels, all R = 31, G = 0, B = 16.
+  std::array<u8, 32> src;
+  for (size_t i = 0; i < src.size(); i += 2)
+  {
+    src[i] = 0xF8;
+    src[i + 1] = 0x10;
+  }
+  std::array<u8, 64> dst;
+  TexDecoder_Decode(dst.data(), src.data(), 4, 4, TextureFormat::RGB565, nullptr, TLUTFormat::IA8);
+  for (size_t i = 0; i < dst.size(); i += 4)
+  {
+    const std::array<u8, 4> pixel{dst[i], dst[i + 1], dst[i + 2], dst[i + 3]};
+    EXPECT_EQ(pixel, (std::array<u8, 4>{0xFF, 0x00, 0x84, 0xFF})) << "pixel " << i / 4;
+  }
+}
+
+TEST(TextureDecoderBytes, RGBA8)
+{
+  // One 4x4 block: 16 texels of A, R bytes then 16 texels of G, B bytes.
+  std::array<u8, 64> src;
+  for (size_t i = 0; i < 16; i++)
+  {
+    src[2 * i] = 0x11;
+    src[2 * i + 1] = 0x22;
+    src[32 + 2 * i] = 0x33;
+    src[32 + 2 * i + 1] = 0x44;
+  }
+  std::array<u8, 64> dst;
+  TexDecoder_Decode(dst.data(), src.data(), 4, 4, TextureFormat::RGBA8, nullptr, TLUTFormat::IA8);
+  for (size_t i = 0; i < dst.size(); i += 4)
+  {
+    const std::array<u8, 4> pixel{dst[i], dst[i + 1], dst[i + 2], dst[i + 3]};
+    EXPECT_EQ(pixel, (std::array<u8, 4>{0x22, 0x33, 0x44, 0x11})) << "pixel " << i / 4;
+  }
+}
+
 namespace
 {
 // The generic decoder, with each operation rounded on its own, as on hosts without fused

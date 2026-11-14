@@ -349,7 +349,7 @@ s32 OH0::SubmitTransfer(USB::Device& device, const IOCtlVRequest& ioctlv)
   {
   case USB::IOCTLV_USBV0_CTRLMSG:
     if (!ioctlv.HasNumberOfValidVectors(6, 1) ||
-        Common::swap16(memory.Read_U16(ioctlv.in_vectors[4].address)) != ioctlv.io_vectors[0].size)
+        Common::bswap16(memory.Read_U16(ioctlv.in_vectors[4].address)) != ioctlv.io_vectors[0].size)
       return IPC_EINVAL;
     return device.SubmitTransfer(
         std::make_unique<USB::V0CtrlMessage>(GetEmulationKernel(), ioctlv));

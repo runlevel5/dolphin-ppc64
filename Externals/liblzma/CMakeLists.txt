@@ -51,6 +51,12 @@ endif()
 add_definitions(-DHAVE_CONFIG_H)
 add_definitions(-DLZMA_API_STATIC)
 
+# config.h was generated for a little-endian host and only detects byte order in Apple universal
+# builds, so tell it about big-endian hosts ourselves.
+if(CMAKE_C_BYTE_ORDER STREQUAL "BIG_ENDIAN")
+  add_definitions(-DWORDS_BIGENDIAN=1)
+endif()
+
 #============================================================================
 # lzma
 #============================================================================

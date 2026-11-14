@@ -13,6 +13,7 @@
 #include "Common/BitUtils.h"
 #include "Common/CommonTypes.h"
 #include "Common/Logging/Log.h"
+#include "Common/Swap.h"
 
 #include "Core/CoreTiming.h"
 #include "Core/HW/EXI/EXI.h"
@@ -282,7 +283,7 @@ void CEXIMic::TransferByte(u8& byte)
     if (pos == 0)
       m_status.button = Pad::GetMicButton(m_slot);
 
-    byte = Common::BitCastPtr<u8>(&m_status)[pos ^ 1];
+    byte = Common::BitCastPtr<u8>(&m_status)[Common::kHostBigEndian ? pos : (pos ^ 1)];
 
     if (pos == 1)
       m_status.buff_ovrflw = 0;
@@ -296,7 +297,7 @@ void CEXIMic::TransferByte(u8& byte)
       break;
     }
     const bool was_active = m_status.is_active;
-    Common::BitCastPtr<u8>(&m_status)[pos ^ 1] = byte;
+    Common::BitCastPtr<u8>(&m_status)[Common::kHostBigEndian ? pos : (pos ^ 1)] = byte;
 
     // safe to do since these can only be entered if both bytes of status have been written
     if (!was_active && m_status.is_active)

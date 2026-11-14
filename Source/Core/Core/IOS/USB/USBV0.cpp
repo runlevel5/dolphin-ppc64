@@ -20,9 +20,10 @@ V0CtrlMessage::V0CtrlMessage(EmulationKernel& ios, const IOCtlVRequest& ioctlv)
   auto& memory = system.GetMemory();
   request_type = memory.Read_U8(ioctlv.in_vectors[0].address);
   request = memory.Read_U8(ioctlv.in_vectors[1].address);
-  value = Common::swap16(memory.Read_U16(ioctlv.in_vectors[2].address));
-  index = Common::swap16(memory.Read_U16(ioctlv.in_vectors[3].address));
-  length = Common::swap16(memory.Read_U16(ioctlv.in_vectors[4].address));
+  // The setup packet's fields are little-endian in console memory.
+  value = Common::bswap16(memory.Read_U16(ioctlv.in_vectors[2].address));
+  index = Common::bswap16(memory.Read_U16(ioctlv.in_vectors[3].address));
+  length = Common::bswap16(memory.Read_U16(ioctlv.in_vectors[4].address));
 }
 
 V0BulkMessage::V0BulkMessage(EmulationKernel& ios, const IOCtlVRequest& ioctlv, bool long_length)

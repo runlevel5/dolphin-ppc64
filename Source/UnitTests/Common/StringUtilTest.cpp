@@ -382,13 +382,13 @@ TEST(StringUtil, IPv4PortRangeToString)
 
   EXPECT_EQ(subject.ToString(), "10.3.0.127");
 
-  subject.last.port = Common::swap16(80);  // First port is still zero.
+  subject.last.port = Common::ToBigEndian<u16>(80);  // First port is still zero.
   EXPECT_EQ(subject.ToString(), "10.3.0.127");
 
-  subject.first.port = Common::swap16(80);
+  subject.first.port = Common::ToBigEndian<u16>(80);
   EXPECT_EQ(subject.ToString(), "10.3.0.127:80");
 
-  subject.last.port = Common::swap16(88);
+  subject.last.port = Common::ToBigEndian<u16>(88);
   EXPECT_EQ(subject.ToString(), "10.3.0.127:80-88");
 
   subject.last.ip_address = {10, 3, 0, 128};

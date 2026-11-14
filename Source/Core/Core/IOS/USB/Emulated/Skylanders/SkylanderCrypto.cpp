@@ -71,7 +71,7 @@ u64 CalculateKeyA(u8 sector, std::span<const u8, 0x4> nuid)
   std::array<u8, 5> data = {nuid[0], nuid[1], nuid[2], nuid[3], sector};
 
   u64 big_endian_crc = ComputeCRC48(data);
-  u64 little_endian_crc = Common::swap64(big_endian_crc) >> 16;
+  u64 little_endian_crc = Common::bswap64(big_endian_crc) >> 16;
 
   return little_endian_crc;
 }
@@ -80,7 +80,7 @@ void ComputeChecksumType0(const u8* data_start, u8* output)
   std::array<u8, 0x1E> input = {};
   memcpy(input.data(), data_start, 0x1E);
   u16 crc = ComputeCRC16(input);
-  memcpy(output, &crc, 2);
+  Common::WriteLittleEndian(output, crc);
 }
 void ComputeChecksumType1(const u8* data_start, u8* output)
 {
@@ -89,7 +89,7 @@ void ComputeChecksumType1(const u8* data_start, u8* output)
   input[0xE] = 0x05;
   input[0xF] = 0x00;
   u16 crc = ComputeCRC16(input);
-  memcpy(output, &crc, 2);
+  Common::WriteLittleEndian(output, crc);
 }
 void ComputeChecksumType2(const u8* data_start, u8* output)
 {
@@ -97,7 +97,7 @@ void ComputeChecksumType2(const u8* data_start, u8* output)
   memcpy(input.data(), data_start, 0x20);
   memcpy(input.data() + 0x20, data_start + 0x30, 0x10);
   u16 crc = ComputeCRC16(input);
-  memcpy(output, &crc, 2);
+  Common::WriteLittleEndian(output, crc);
 }
 void ComputeChecksumType3(const u8* data_start, u8* output)
 {
@@ -105,7 +105,7 @@ void ComputeChecksumType3(const u8* data_start, u8* output)
   memcpy(input.data(), data_start, 0x20);
   memcpy(input.data() + 0x20, data_start + 0x30, 0x10);
   u16 crc = ComputeCRC16(input);
-  memcpy(output, &crc, 2);
+  Common::WriteLittleEndian(output, crc);
 }
 
 void ComputeChecksumType6(const u8* data_start, u8* output)
@@ -118,7 +118,7 @@ void ComputeChecksumType6(const u8* data_start, u8* output)
   input[0x1] = 0x01;
 
   u16 crc = ComputeCRC16(input);
-  memcpy(output, &crc, 2);
+  Common::WriteLittleEndian(output, crc);
 }
 std::array<u8, 11> ComputeToyCode(u64 code)
 {
